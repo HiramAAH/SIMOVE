@@ -86,38 +86,20 @@
             const errorDiv = document.getElementById('error');
             errorDiv.textContent = '';
 
-            if (!nombre_usuario || !password) {
-                errorDiv.textContent = 'Por favor completa todos los campos';
-                return;
-            }
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre_usuario, password })
+            });
 
-            try {
-                const response = await fetch('/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nombre_usuario, password })
-                });
+            const data = await response.json();
 
-                const data = await response.json();
-
-                if (data.success) {
-                    // Guardar datos del usuario en localStorage
-                    localStorage.setItem('usuario', JSON.stringify(data.user));
-
-                    // Redirigir según rol
-                    if (data.user.rol === 'admin') {
-                        window.location.href = 'admin/dashboard.html';
-                    } else if (data.user.rol === 'repartidor') {
-                        window.location.href = 'repartidor/dashboard.html';
-                    } else {
-                        errorDiv.textContent = 'Rol de usuario desconocido';
-                    }
-                } else {
-                    errorDiv.textContent = data.message || 'Usuario o contraseña incorrecta';
-                }
-            } catch (err) {
-                errorDiv.textContent = 'Error de conexión con el servidor';
-                console.error(err);
+            if (data.success) {
+                localStorage.setItem('usuario', JSON.stringify(data.user));
+                if (data.user.rol === 'admin') window.location.href = 'admin/dashboard.html';
+                else window.location.href = 'repartidor/dashboard.html';
+            } else {
+                errorDiv.textContent = data.message || 'Usuario o contraseña incorrecta';
             }
         }
     </script>

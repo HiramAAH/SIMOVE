@@ -2,10 +2,46 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard - Purificadora</title>
+  <title>Dashboard - Repartidor</title>
+  <script>
+    // Verificar usuario logueado y rol
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+
+    if (!usuario) {
+      alert('Acceso no autorizado. Inicia sesión.');
+      window.location.href = '/';
+    } else if (usuario.rol !== 'repartidor') {
+      alert('No tienes permisos para acceder a esta página.');
+      window.location.href = '/';
+    }
+
+    // Función para cerrar sesión
+    function cerrarSesion() {
+      localStorage.removeItem('usuario');
+      window.location.href = '/';
+    }
+  </script>
+  <style>
+    button {
+      padding: 10px 20px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 6px;
+      background-color: #1C6EA4;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #155a8a;
+    }
+  </style>
 </head>
 <body>
   <h1>Dashboard</h1>
   <p>Bienvenido al sistema de la purificadora <strong>REPARTIDOR</strong></p>
+
+  <button onclick="cerrarSesion()">Cerrar Sesión</button>
 </body>
 </html>
