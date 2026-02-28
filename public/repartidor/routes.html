@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ruta - Repartidor</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f0f2f5;
+    }
+
+    h1 {
+      color: #1C6EA4;
+    }
+
+    button {
+      padding: 12px 20px;
+      margin: 10px 5px;
+      border: none;
+      border-radius: 6px;
+      background-color: #1C6EA4;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #155a8a;
+    }
+
+    .status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 350px;
+      text-align: center;
+    }
+
+    .modal-content input {
+      width: 100%;
+      padding: 10px;
+      margin: 15px 0;
+      font-size: 16px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <h1>Ruta del Repartidor</h1>
+
+  <button id="startRoute">Iniciar Ruta</button>
+  <button id="reabastecer" disabled>Reabastecer</button>
+  <button id="endTurn" disabled>Terminar Turno</button>
+
+  <div class="status" id="status">Ruta no iniciada.</div>
+  <div class="ventas" id="ventas">Garrafones vendidos: 0</div>
+
+  <!-- Modal -->
+  <div class="modal" id="modalReabastecer">
+    <div class="modal-content">
+      <h3>Reabastecer</h3>
+      <p>¿Cuántos garrafones vendiste en esta vuelta?</p>
+      <input type="number" id="inputGarrafones" min="1" placeholder="Ej: 10">
+      <button id="guardarVenta">Guardar</button>
+    </div>
+  </div>
+
+  <script>
+    let rutaActiva = false;
+    let totalGarrafones = 0;
+    let intervaloUbicacion = null;
+
+    const statusDiv = document.getElementById('status');
+    const ventasDiv = document.getElementById('ventas');
+    const startBtn = document.getElementById('startRoute');
+    const reabastecerBtn = document.getElementById('reabastecer');
+    const endBtn = document.getElementById('endTurn');
+
+    const modal = document.getElementById('modalReabastecer');
+    const inputGarrafones = document.getElementById('inputGarrafones');
+    const guardarVentaBtn = document.getElementById('guardarVenta');
+
+    function compartirUbicacion() {
+      if (!rutaActiva) return;
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          console.log(`Ubicación: Lat ${pos.coords.latitude}, Lon ${pos.coords.longitude}`);
+        });
+      }
+    }
+
+    // Iniciar ruta
+    startBtn.addEventListener('click', () => {
+      rutaActiva = true;
+      statusDiv.textContent = 'Ruta iniciada. Compartiendo ubicación...';
+      startBtn.disabled = true;
+      reabastecerBtn.disabled = false;
+      endBtn.disabled = false;
+
+      intervaloUbicacion = setInterval(compartirUbicacion, 5000);
+    });
+
+    // Reabastecer
+    reabastecerBtn.addEventListener('click', () => {
+      if (!rutaActiva) return;
+
+      clearInterval(intervaloUbicacion);
+      statusDiv.textContent = 'Ruta pausada. Registrando venta...';
+      inputGarrafones.value = '';
+      modal.style.display = 'flex';
+      inputGarrafones.focus();
+    });
+
+    // Guardar venta
+    guardarVentaBtn.addEventListener('click', () => {
+      const vendidos = parseInt(inputGarrafones.value);
+
+      if (!isNaN(vendidos) && vendidos > 0) {
+        totalGarrafones += vendidos;
+        ventasDiv.textContent = `Garrafones vendidos: ${totalGarrafones}`;
+        modal.style.display = 'none';
+
+        // Reanudar ruta
+        intervaloUbicacion = setInterval(compartirUbicacion, 5000);
+        statusDiv.textContent = 'Ruta reanudada. Compartiendo ubicación...';
+      } else {
+        alert('Ingresa un número válido mayor a 0.');
+      }
+    });
+
+    // Terminar turno
+    endBtn.addEventListener('click', () => {
+      clearInterval(intervaloUbicacion);
+      rutaActiva = false;
+      alert(`Turno terminado. Total de garrafones vendidos: ${totalGarrafones}`);
+      window.location.href = 'dashboard.html';
+    });
+  </script>
+
+</body>
+</html>

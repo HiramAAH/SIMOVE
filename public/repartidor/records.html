@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cortes - Repartidor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f0f2f5;
+    }
+
+    h1 {
+      color: #1C6EA4;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #1C6EA4;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #e8f0fe;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 6px;
+      background-color: #1C6EA4;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #155a8a;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Cortes de Garrafones</h1>
+
+  <table id="tablaCortes">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Garrafones vendidos</th>
+        <th>Total (MXN)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Se llenará con JS -->
+    </tbody>
+  </table>
+
+  <div style="text-align: center;">
+    <button onclick="regresar()">Regresar al panel</button>
+  </div>
+
+  <script>
+    // Simulación de datos de prueba
+    const cortes = [
+      { fecha: '2026-02-25', garrafones_vendidos: 12 },
+      { fecha: '2026-02-26', garrafones_vendidos: 18 },
+      { fecha: '2026-02-27', garrafones_vendidos: 15 }
+    ];
+
+    const precioGarrafon = 15; // pesos mexicanos
+    const tbody = document.getElementById('tablaCortes').querySelector('tbody');
+
+    // Llenar tabla
+    cortes.forEach(corte => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${corte.fecha}</td>
+        <td>${corte.garrafones_vendidos}</td>
+        <td>${corte.garrafones_vendidos * precioGarrafon}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    function regresar() {
+      window.location.href = 'dashboard.html';
+    }
+  </script>
+</body>
+</html>

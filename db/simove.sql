@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 28-02-2026 a las 07:38:14
+-- Tiempo de generación: 28-02-2026 a las 09:33:38
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -38,14 +38,43 @@ CREATE TABLE `coordenadas` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `cortes`
+--
+
+CREATE TABLE `cortes` (
+  `id_corte` int(11) NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `id_ruta` int(11) NOT NULL,
+  `fecha` date NOT NULL,
+  `garrafones_vendidos` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `rutas`
 --
 
 CREATE TABLE `rutas` (
   `id_ruta` int(11) NOT NULL,
+  `id_ruta_catalogo` int(11) NOT NULL,
   `id_usuario` int(11) NOT NULL,
   `fecha_inicio` datetime NOT NULL,
   `fecha_fin` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `rutas_catalogo`
+--
+
+CREATE TABLE `rutas_catalogo` (
+  `id_ruta_catalogo` int(11) NOT NULL,
+  `nombre_ruta` varchar(100) NOT NULL,
+  `descripcion` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -82,11 +111,26 @@ ALTER TABLE `coordenadas`
   ADD KEY `id_ruta` (`id_ruta`);
 
 --
+-- Indices de la tabla `cortes`
+--
+ALTER TABLE `cortes`
+  ADD PRIMARY KEY (`id_corte`),
+  ADD KEY `idx_usuario_fecha` (`id_usuario`,`fecha`),
+  ADD KEY `idx_ruta_fecha` (`id_ruta`,`fecha`);
+
+--
 -- Indices de la tabla `rutas`
 --
 ALTER TABLE `rutas`
   ADD PRIMARY KEY (`id_ruta`),
-  ADD KEY `id_usuario` (`id_usuario`);
+  ADD KEY `id_usuario` (`id_usuario`),
+  ADD KEY `fk_ruta_catalogo` (`id_ruta_catalogo`);
+
+--
+-- Indices de la tabla `rutas_catalogo`
+--
+ALTER TABLE `rutas_catalogo`
+  ADD PRIMARY KEY (`id_ruta_catalogo`);
 
 --
 -- Indices de la tabla `usuarios`
@@ -105,10 +149,22 @@ ALTER TABLE `coordenadas`
   MODIFY `id_coord` bigint(20) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `cortes`
+--
+ALTER TABLE `cortes`
+  MODIFY `id_corte` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `rutas`
 --
 ALTER TABLE `rutas`
   MODIFY `id_ruta` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `rutas_catalogo`
+--
+ALTER TABLE `rutas_catalogo`
+  MODIFY `id_ruta_catalogo` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`
@@ -127,9 +183,17 @@ ALTER TABLE `coordenadas`
   ADD CONSTRAINT `coordenadas_ibfk_1` FOREIGN KEY (`id_ruta`) REFERENCES `rutas` (`id_ruta`) ON DELETE CASCADE;
 
 --
+-- Filtros para la tabla `cortes`
+--
+ALTER TABLE `cortes`
+  ADD CONSTRAINT `cortes_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`) ON DELETE CASCADE,
+  ADD CONSTRAINT `cortes_ibfk_2` FOREIGN KEY (`id_ruta`) REFERENCES `rutas` (`id_ruta`) ON DELETE CASCADE;
+
+--
 -- Filtros para la tabla `rutas`
 --
 ALTER TABLE `rutas`
+  ADD CONSTRAINT `fk_ruta_catalogo` FOREIGN KEY (`id_ruta_catalogo`) REFERENCES `rutas_catalogo` (`id_ruta_catalogo`) ON DELETE CASCADE,
   ADD CONSTRAINT `rutas_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`) ON DELETE CASCADE;
 COMMIT;
 
