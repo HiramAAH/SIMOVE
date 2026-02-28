@@ -1,10 +1,126 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>SIMOVE</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Purificadora</title>
+  <style>
+    /* Reset básico */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #6CC0E5, #1C6EA4);
+    }
+
+    .login-container {
+      background-color: #fff;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .login-container h1 {
+      margin-bottom: 30px;
+      color: #1C6EA4;
+    }
+
+    .login-container input {
+      width: 100%;
+      padding: 12px 15px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    .login-container button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 6px;
+      background-color: #1C6EA4;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .login-container button:hover {
+      background-color: #155a8a;
+    }
+
+    .error {
+      color: red;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Login SIMOVE</h1>
+
+  <div class="login-container">
+    <h1>Purificadora El Manatial</h1>
+    <input type="text" id="nombre_usuario" placeholder="Usuario">
+    <input type="password" id="password" placeholder="Contraseña">
+    <button onclick="login()">Iniciar Sesión</button>
+    <div class="error" id="error"></div>
+  </div>
+
+    <script>
+        async function login() {
+            const nombre_usuario = document.getElementById('nombre_usuario').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = '';
+
+            if (!nombre_usuario || !password) {
+                errorDiv.textContent = 'Por favor completa todos los campos';
+                return;
+            }
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre_usuario, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Guardar datos del usuario en localStorage
+                    localStorage.setItem('usuario', JSON.stringify(data.user));
+
+                    // Redirigir según rol
+                    if (data.user.rol === 'admin') {
+                        window.location.href = 'admin/dashboard.html';
+                    } else if (data.user.rol === 'repartidor') {
+                        window.location.href = 'repartidor/dashboard.html';
+                    } else {
+                        errorDiv.textContent = 'Rol de usuario desconocido';
+                    }
+                } else {
+                    errorDiv.textContent = data.message || 'Usuario o contraseña incorrecta';
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Error de conexión con el servidor';
+                console.error(err);
+            }
+        }
+    </script>
+
 </body>
 </html>
