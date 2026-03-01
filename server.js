@@ -24,8 +24,8 @@ const db = mysql.createConnection({
 });
 
 db.connect((err) => {
-  if (err) console.error('Error DB en server.js:', err);
-  else console.log('DB MySQL Conectada correctamente en el servidor.');
+  if (err) console.error('\x1b[31m[ERROR DB]\x1b[0m en server.js:', err);
+  else console.log('\x1b[36m[SISTEMA]\x1b[0m DB MySQL Conectada correctamente.');
 });
 
 // -------------------
@@ -65,27 +65,24 @@ io.on('connection', (socket) => {
   const req = socket.request;
   const user = req.session?.user;
 
-  // Variables provisionales para la ruta actual
   let idRutaActual = 1; 
 
   if (!user) {
-    return;
+    return; // Ignoramos conexiones sin sesión (evita spam en consola)
   }
   
-  // Registrar usuario activo
   usuariosActivos[socket.id] = user;
-  console.log(`${user.nombre_usuario} inició sesión (${user.rol})`);
+  console.log(`\x1b[35m[LOGIN]\x1b[0m ${user.nombre_usuario} inició sesión (${user.rol})`);
 
-  // Notificar ingreso al admin
   io.emit('usuario_ingreso', user);
   socket.emit('usuarios_activos', Object.values(usuariosActivos));
 
-  // 1. ESCUCHAR INICIO DE RUTA
+  // 1. INICIO DE RUTA
   socket.on('iniciar_ruta_db', () => {
-    console.log(`[DB] ${user.nombre_usuario} ha iniciado su ruta.`);
+    console.log(`\x1b[34m[RUTA]\x1b[0m ${user.nombre_usuario} ha INICIADO su trayecto.`);
   });
 
-  // 2. ESCUCHAR Y GUARDAR COORDENADAS
+  // 2. ESCUCHAR Y REPORTAR COORDENADAS (LO QUE PEDISTE)
   socket.on('nueva_ubicacion', (datos) => {
     const usuarioActual = socket.request.session?.user;
 
@@ -95,15 +92,16 @@ io.on('connection', (socket) => {
         rol: usuarioActual.rol,
         lat: datos.lat,
         lng: datos.lng,
-        precision: datos.precision || 0
+        precision: Math.round(datos.precision || 0)
       };
 
-      console.log(`[GPS] ${paqueteDatos.usuario} -> Lat: ${paqueteDatos.lat}, Lng: ${paqueteDatos.lng}`);
+      // REPORTAR EN CMD CON FORMATO Y COLORES
+      console.log(`\x1b[32m[GPS EN VIVO]\x1b[0m Repartidor: \x1b[33m${paqueteDatos.usuario}\x1b[0m | Lat: ${paqueteDatos.lat}, Lng: ${paqueteDatos.lng} | Precisión: ${paqueteDatos.precision}m`);
 
       // Guardar en la tabla 'coordenadas'
       const queryCoord = 'INSERT INTO coordenadas (id_ruta, latitud, longitud, timestamp) VALUES (?, ?, ?, NOW())';
       db.query(queryCoord, [idRutaActual, datos.lat, datos.lng], (err) => {
-        if (err) console.error("Error al guardar coordenada:", err.message);
+        if (err) console.error("\x1b[31m[ERROR DB]\x1b[0m al guardar coordenada:", err.message);
       });
 
       // Retransmitir al panel de monitoreo (Admins)
@@ -111,11 +109,10 @@ io.on('connection', (socket) => {
     }
   });
 
-// 3. ESCUCHAR FIN DE RUTA CON CALLBACK (CORTES)
+  // 3. FIN DE RUTA Y CORTES
   socket.on('finalizar_ruta_db', (datos, callback) => {
     const usuarioActual = socket.request.session?.user;
 
-    // Si el usuario sí pasó por el Login
     if (usuarioActual) {
       const queryCorte = `
         INSERT INTO cortes (id_usuario, id_ruta, fecha, garrafones_vendidos) 
@@ -124,35 +121,30 @@ io.on('connection', (socket) => {
       
       db.query(queryCorte, [usuarioActual.id_usuario, idRutaActual, datos.total_vendidos], (err) => {
         if (err) {
-          console.error("Error al guardar el corte en MySQL:", err.message);
-          // Avisar al frontend que falló la Base de Datos
+          console.error("\x1b[31m[ERROR DB]\x1b[0m al guardar el corte:", err.message);
           if (callback) callback({ exito: false, error: err.message });
         } else {
-          console.log(`[DB] ÉXITO: Corte guardado para ${usuarioActual.nombre_usuario} -> ${datos.total_vendidos} garrafones.`);
-          // Avisar al frontend que todo salió bien
+          console.log(`\x1b[36m[CORTE ÉXITO]\x1b[0m ${usuarioActual.nombre_usuario} reportó ${datos.total_vendidos} garrafones.`);
           if (callback) callback({ exito: true });
         }
       });
-    } 
-    // SI NO HAY SESIÓN ACTIVA (El usuario no hizo login)
-    else {
-      console.log("[DB] Error: Intento de guardar sin sesión activa.");
-      if (callback) callback({ exito: false, error: "No tienes una sesión activa. Debes hacer Login primero para que el servidor sepa quién eres." });
+    } else {
+      console.log("\x1b[31m[ERROR]\x1b[0m Intento de guardar sin sesión activa.");
+      if (callback) callback({ exito: false, error: "No tienes una sesión activa." });
     }
   });
 
-  // DESCONEXIÓN
   socket.on('disconnect', () => {
     const usuario = usuariosActivos[socket.id];
     if (usuario) {
-      console.log(`${usuario.nombre_usuario} salió del sistema`);
+      console.log(`\x1b[31m[LOGOUT]\x1b[0m ${usuario.nombre_usuario} salió del sistema`);
       io.emit('usuario_salida', usuario);
       delete usuariosActivos[socket.id];
     }
   });
 });
 
-// --- NUEVA RUTA: OBTENER HISTORIAL DE CORTES ---
+// --- RUTA: OBTENER HISTORIAL DE CORTES ---
 app.get('/api/mis-cortes', (req, res) => {
   const usuarioActual = req.session?.user;
 
@@ -160,7 +152,6 @@ app.get('/api/mis-cortes', (req, res) => {
     return res.status(401).json({ error: "No autorizado. Inicia sesión." });
   }
 
-  // Consulta SQL: Obtener los cortes del usuario, ordenados de más recientes a más antiguos
   const query = `
     SELECT fecha, garrafones_vendidos 
     FROM cortes 
@@ -179,5 +170,5 @@ app.get('/api/mis-cortes', (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`\x1b[32mServidor corriendo en http://localhost:${PORT}\x1b[0m`);
 });
