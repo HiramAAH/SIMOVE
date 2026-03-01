@@ -1,11 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitoreo - Admin</title>
+<meta charset="UTF-8">
+<title>Monitoreo - Admin</title>
+<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-    Sección de monitoreo para el administrador. Aquí podrás visualizar el estado de las rutas, los repartidores y las entregas en tiempo real.
+
+<h2>Monitoreo en tiempo real</h2>
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+const socket = io();
+
+socket.on('connect', () => {
+  console.log('Admin conectado al monitoreo');
+});
+
+socket.on('usuarios_activos', (lista) => {
+  console.log('Usuarios activos actualmente:');
+  lista.forEach(u => {
+    console.log(`${u.nombre_usuario} (${u.rol})`);
+  });
+});
+
+socket.on('usuario_ingreso', (user) => {
+  console.log(`${user.nombre_usuario} ingresó (${user.rol})`);
+});
+
+socket.on('usuario_salida', (user) => {
+  console.log(`${user.nombre_usuario} cerró sesión o perdió conexión`);
+});
+</script>
+
 </body>
 </html>

@@ -1,11 +1,205 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Usuarios - Admin</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usuarios - Admin</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f6f9;
+    padding:20px;
+}
+
+h1{
+    color:#1C6EA4;
+}
+
+button{
+    padding:8px 14px;
+    margin:5px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    background:#1C6EA4;
+    color:white;
+}
+
+button:hover{
+    background:#155a8a;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+    background:white;
+}
+
+th, td{
+    padding:10px;
+    border:1px solid #ccc;
+    text-align:center;
+}
+
+th{
+    background:#1C6EA4;
+    color:white;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.5);
+    justify-content:center;
+    align-items:center;
+}
+
+.modal-content{
+    background:white;
+    padding:25px;
+    border-radius:10px;
+    width:90%;
+    max-width:400px;
+}
+
+.modal-content input, .modal-content select{
+    width:100%;
+    padding:8px;
+    margin:8px 0;
+}
+
+</style>
 </head>
 <body>
-    Sección de gestión de usuarios para el administrador. Aquí podrás agregar, editar o eliminar usuarios del sistema.
+
+<h1>Gestión de Usuarios</h1>
+
+<button id="addUserBtn">Agregar Usuario</button>
+
+<table>
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Rol</th>
+            <th>Usuario</th>
+            <th>Contraseña</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody id="userTable"></tbody>
+</table>
+
+<!-- Modal -->
+<div class="modal" id="userModal">
+    <div class="modal-content">
+        <h3 id="modalTitle">Nuevo Usuario</h3>
+        <input type="text" id="nombre" placeholder="Nombre completo">
+        <select id="rol">
+            <option value="repartidor">Repartidor</option>
+            <option value="admin">Administrador</option>
+        </select>
+        <input type="text" id="usuario" placeholder="Usuario">
+        <input type="password" id="password" placeholder="Contraseña">
+        <button id="saveUser">Guardar</button>
+        <button onclick="cerrarModal()">Cancelar</button>
+    </div>
+</div>
+
+<script>
+let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
+let editIndex = null;
+
+const userTable = document.getElementById("userTable");
+const modal = document.getElementById("userModal");
+
+function renderUsers(){
+    userTable.innerHTML = "";
+
+    usuarios.forEach((user, index) => {
+        userTable.innerHTML += `
+            <tr>
+                <td>${user.nombre}</td>
+                <td>${user.rol}</td>
+                <td>${user.usuario}</td>
+                <td>${user.password}</td>
+                <td>
+                    <button onclick="editarUsuario(${index})">Editar</button>
+                    <button onclick="eliminarUsuario(${index})">Eliminar</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    localStorage.setItem("usuarios", JSON.stringify(usuarios));
+}
+
+document.getElementById("addUserBtn").addEventListener("click", () => {
+    editIndex = null;
+    document.getElementById("modalTitle").textContent = "Nuevo Usuario";
+    limpiarFormulario();
+    modal.style.display = "flex";
+});
+
+document.getElementById("saveUser").addEventListener("click", () => {
+    const nombre = document.getElementById("nombre").value;
+    const rol = document.getElementById("rol").value;
+    const usuario = document.getElementById("usuario").value;
+    const password = document.getElementById("password").value;
+
+    if(!nombre || !usuario || !password){
+        alert("Completa todos los campos.");
+        return;
+    }
+
+    const nuevoUsuario = {nombre, rol, usuario, password};
+
+    if(editIndex === null){
+        usuarios.push(nuevoUsuario);
+    } else {
+        usuarios[editIndex] = nuevoUsuario;
+    }
+
+    cerrarModal();
+    renderUsers();
+});
+
+function editarUsuario(index){
+    editIndex = index;
+    const user = usuarios[index];
+
+    document.getElementById("modalTitle").textContent = "Editar Usuario";
+    document.getElementById("nombre").value = user.nombre;
+    document.getElementById("rol").value = user.rol;
+    document.getElementById("usuario").value = user.usuario;
+    document.getElementById("password").value = user.password;
+
+    modal.style.display = "flex";
+}
+
+function eliminarUsuario(index){
+    if(confirm("¿Seguro que deseas eliminar este usuario?")){
+        usuarios.splice(index,1);
+        renderUsers();
+    }
+}
+
+function cerrarModal(){
+    modal.style.display = "none";
+    limpiarFormulario();
+}
+
+function limpiarFormulario(){
+    document.getElementById("nombre").value = "";
+    document.getElementById("rol").value = "repartidor";
+    document.getElementById("usuario").value = "";
+    document.getElementById("password").value = "";
+}
+
+renderUsers();
+</script>
+
 </body>
 </html>

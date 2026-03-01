@@ -19,13 +19,13 @@
     }
 
     .card:hover {
-      transform: translateY(-10px); /* Se mueve hacia arriba */
-      box-shadow: 0 10px 20px rgba(0,0,0,0.2); /* Sombra para resaltar el movimiento */
+      transform: translateY(-10px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
     }
   </style>
-
+    <script src="/socket.io/socket.io.js"></script>
   <script>
-    /*
+    const socket = io();
     const usuario = JSON.parse(localStorage.getItem('usuario'));
 
     if (!usuario) {
@@ -40,7 +40,7 @@
       localStorage.removeItem('usuario');
       window.location.href = '/';
     }
-    */
+    
   </script>
 </head>
 <body class="bg-light">

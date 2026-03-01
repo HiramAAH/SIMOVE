@@ -1,11 +1,194 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Estadísticas - Admin</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estadísticas - Admin</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f6f9;
+    padding:20px;
+}
+
+h1{
+    color:#1C6EA4;
+}
+
+.container{
+    margin-top:20px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    margin-top:20px;
+}
+
+th, td{
+    padding:10px;
+    border:1px solid #ccc;
+    text-align:center;
+}
+
+th{
+    background:#1C6EA4;
+    color:white;
+}
+
+button{
+    padding:8px 14px;
+    margin:5px;
+    border:none;
+    border-radius:6px;
+    background:#1C6EA4;
+    color:white;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#155a8a;
+}
+
+input{
+    padding:6px;
+    margin:5px;
+}
+</style>
 </head>
 <body>
-    Sección de estadísticas para el administrador. Aquí podrás visualizar gráficos y reportes sobre el rendimiento de las rutas, la eficiencia de los repartidores y otros indicadores clave del sistema.
+
+<h1>Estadísticas del Sistema</h1>
+
+<div class="container">
+
+    <h3>Buscar por Día</h3>
+    <input type="date" id="filtroDia">
+    <button onclick="filtrarPorDia()">Buscar</button>
+    <button onclick="mostrarTodos()">Mostrar Todos</button>
+
+    <h3>Listado de Cortes</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Repartidor</th>
+                <th>Garrafones Vendidos</th>
+                <th>Total ($)</th>
+            </tr>
+        </thead>
+        <tbody id="tablaCortes"></tbody>
+    </table>
+
+</div>
+
+<div class="container">
+    <h3>Ventas Totales de la Semana (Todos los Repartidores)</h3>
+    <canvas id="graficaSemanal"></canvas>
+</div>
+
+<script>
+
+// ---------------------
+// DATOS SIMULADOS
+// ---------------------
+
+let cortes = [
+    {fecha:"2025-03-24", repartidor:"Ivan", vendidos:20},
+    {fecha:"2025-03-24", repartidor:"Luis", vendidos:15},
+    {fecha:"2025-03-25", repartidor:"Ivan", vendidos:18},
+    {fecha:"2025-03-25", repartidor:"Luis", vendidos:22},
+    {fecha:"2025-03-26", repartidor:"Ivan", vendidos:25},
+    {fecha:"2025-03-27", repartidor:"Luis", vendidos:19},
+    {fecha:"2025-03-28", repartidor:"Ivan", vendidos:30}
+];
+
+const PRECIO = 15;
+const tabla = document.getElementById("tablaCortes");
+
+// ---------------------
+// RENDER TABLA
+// ---------------------
+
+function renderTabla(data){
+    tabla.innerHTML = "";
+
+    data.forEach(corte => {
+        tabla.innerHTML += `
+            <tr>
+                <td>${corte.fecha}</td>
+                <td>${corte.repartidor}</td>
+                <td>${corte.vendidos}</td>
+                <td>$${corte.vendidos * PRECIO}</td>
+            </tr>
+        `;
+    });
+}
+
+function mostrarTodos(){
+    renderTabla(cortes);
+}
+
+// ---------------------
+// FILTRO POR DÍA
+// ---------------------
+
+function filtrarPorDia(){
+    const fecha = document.getElementById("filtroDia").value;
+    if(!fecha){
+        alert("Selecciona una fecha.");
+        return;
+    }
+
+    const filtrados = cortes.filter(c => c.fecha === fecha);
+    renderTabla(filtrados);
+}
+
+// ---------------------
+// GRAFICA SEMANAL
+// ---------------------
+
+function generarGrafica(){
+
+    const diasSemana = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+    let ventasPorDia = [0,0,0,0,0,0,0];
+
+    cortes.forEach(corte => {
+        const fecha = new Date(corte.fecha);
+        let dia = fecha.getDay(); // 0 domingo, 1 lunes...
+        dia = dia === 0 ? 6 : dia - 1; // ajustar para lunes=0
+        ventasPorDia[dia] += corte.vendidos;
+    });
+
+    const ctx = document.getElementById("graficaSemanal").getContext("2d");
+
+    new Chart(ctx,{
+        type:"bar",
+        data:{
+            labels:diasSemana,
+            datasets:[{
+                label:"Garrafones Vendidos",
+                data:ventasPorDia
+            }]
+        },
+        options:{
+            responsive:true,
+            plugins:{
+                legend:{display:true}
+            }
+        }
+    });
+}
+
+// Inicializar
+mostrarTodos();
+generarGrafica();
+
+</script>
+
 </body>
 </html>
