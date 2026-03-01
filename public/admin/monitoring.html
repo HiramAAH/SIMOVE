@@ -7,11 +7,14 @@
 </head>
 <body>
 
-<h2>Monitoreo en tiempo real</h2>
-<script src="/socket.io/socket.io.js"></script>
+<h2>Monitoreo en tiempo real (Abre la consola F12)</h2>
+<div id="logUbicaciones" style="background:#222; color:#0f0; padding:10px; height:300px; overflow-y:auto; font-family:monospace;">
+  > Esperando datos de GPS...<br>
+</div>
 
 <script>
 const socket = io();
+const logDiv = document.getElementById('logUbicaciones');
 
 socket.on('connect', () => {
   console.log('Admin conectado al monitoreo');
@@ -30,6 +33,16 @@ socket.on('usuario_ingreso', (user) => {
 
 socket.on('usuario_salida', (user) => {
   console.log(`${user.nombre_usuario} cerró sesión o perdió conexión`);
+});
+socket.on('ubicacion_recibida', (datos) => {
+  const mensaje = `${datos.usuario} (${datos.rol}): Lat ${datos.lat.toFixed(5)}, Lng ${datos.lng.toFixed(5)} (Precisión: ${datos.precision.toFixed(1)}m)`;
+  
+  // Mostrar en consola F12
+  console.log(mensaje);
+  
+  // Mostrar también en la pantalla
+  logDiv.innerHTML += `> ${mensaje}<br>`;
+  logDiv.scrollTop = logDiv.scrollHeight; // Auto-scroll
 });
 </script>
 

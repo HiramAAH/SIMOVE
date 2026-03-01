@@ -20,14 +20,16 @@
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
+      background-color: white; /* Fondo blanco para la tabla */
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Sombra ligera */
     }
 
     table, th, td {
-      border: 1px solid #ccc;
+      border: 1px solid #ddd; /* Borde más suave */
     }
 
     th, td {
-      padding: 10px;
+      padding: 12px;
       text-align: center;
     }
 
@@ -37,71 +39,127 @@
     }
 
     tr:nth-child(even) {
-      background-color: #e8f0fe;
+      background-color: #f9f9f9; /* Color alterno más sutil */
+    }
+    
+    tr:hover {
+      background-color: #f1f1f1; /* Efecto hover en las filas */
     }
 
-    button {
+    .btn-regresar {
       padding: 10px 20px;
       margin-top: 20px;
       border: none;
       border-radius: 6px;
-      background-color: #1C6EA4;
+      background-color: #6c757d; /* Color neutro para regresar */
       color: white;
       font-size: 16px;
       cursor: pointer;
+      transition: background-color 0.3s;
     }
 
-    button:hover {
-      background-color: #155a8a;
+    .btn-regresar:hover {
+      background-color: #5a6268;
+    }
+
+    /* Mensaje de carga o error */
+    #mensaje-estado {
+      text-align: center;
+      margin-top: 20px;
+      font-style: italic;
+      color: #555;
     }
   </style>
 </head>
 <body>
 
-  <h1>Cortes de Garrafones</h1>
+  <h1>Historial de Cortes</h1>
 
-  <table id="tablaCortes">
+  <div id="mensaje-estado">Cargando tus cortes...</div>
+
+  <table id="tablaCortes" style="display: none;">
     <thead>
       <tr>
         <th>Fecha</th>
-        <th>Garrafones vendidos</th>
+        <th>Garrafones Vendidos</th>
         <th>Total (MXN)</th>
       </tr>
     </thead>
     <tbody>
-      <!-- Se llenará con JS -->
-    </tbody>
+      </tbody>
   </table>
 
   <div style="text-align: center;">
-    <button onclick="regresar()">Regresar al panel</button>
+    <button class="btn-regresar" onclick="regresar()">Regresar al Panel</button>
   </div>
 
   <script>
-    // Simulación de datos de prueba
-    const cortes = [
-      { fecha: '2026-02-25', garrafones_vendidos: 12 },
-      { fecha: '2026-02-26', garrafones_vendidos: 18 },
-      { fecha: '2026-02-27', garrafones_vendidos: 15 }
-    ];
-
-    const precioGarrafon = 15; // pesos mexicanos
+    const precioGarrafon = 15; // Precio fijo en pesos mexicanos
     const tbody = document.getElementById('tablaCortes').querySelector('tbody');
+    const tabla = document.getElementById('tablaCortes');
+    const mensajeEstado = document.getElementById('mensaje-estado');
 
-    // Llenar tabla
-    cortes.forEach(corte => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${corte.fecha}</td>
-        <td>${corte.garrafones_vendidos}</td>
-        <td>${corte.garrafones_vendidos * precioGarrafon}</td>
-      `;
-      tbody.appendChild(tr);
-    });
+    // Función para formatear la fecha (de formato ISO a DD/MM/YYYY)
+    function formatearFecha(fechaString) {
+      const opciones = { year: 'numeric', month: '2-digit', day: '2-digit' };
+      const fecha = new Date(fechaString);
+      return fecha.toLocaleDateString('es-MX', opciones);
+    }
+
+    // Función principal para obtener los datos del servidor
+    async function cargarCortes() {
+      try {
+        const respuesta = await fetch('/api/mis-cortes');
+        
+        if (!respuesta.ok) {
+           if(respuesta.status === 401) {
+             throw new Error("No has iniciado sesión.");
+           }
+           throw new Error("Error al consultar el servidor.");
+        }
+
+        const cortesDB = await respuesta.json();
+
+        if (cortesDB.length === 0) {
+          mensajeEstado.textContent = "Aún no tienes cortes registrados.";
+          return;
+        }
+
+        // Limpiar tabla por si acaso
+        tbody.innerHTML = '';
+
+        // Llenar tabla con los datos reales
+        cortesDB.forEach(corte => {
+          const tr = document.createElement('tr');
+          // Formateamos la fecha y calculamos el total
+          const fechaLimpia = formatearFecha(corte.fecha);
+          const totalMXN = corte.garrafones_vendidos * precioGarrafon;
+
+          tr.innerHTML = `
+            <td>${fechaLimpia}</td>
+            <td><strong>${corte.garrafones_vendidos}</strong></td>
+            <td style="color: #28a745; font-weight: bold;">$${totalMXN}.00</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Ocultar mensaje y mostrar tabla
+        mensajeEstado.style.display = 'none';
+        tabla.style.display = 'table';
+
+      } catch (error) {
+        console.error("Error:", error);
+        mensajeEstado.textContent = error.message;
+        mensajeEstado.style.color = "red";
+      }
+    }
 
     function regresar() {
       window.location.href = 'dashboard.html';
     }
+
+    // Ejecutar la carga al abrir la página
+    window.onload = cargarCortes;
   </script>
 </body>
 </html>
