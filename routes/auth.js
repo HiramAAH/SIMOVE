@@ -4,23 +4,30 @@ const router = express.Router();
 const mysql = require('mysql2');
 
 // -------------------
-// CONEXIÓN DINÁMICA A MYSQL (Remota o Local)
+// CONEXIÓN DINÁMICA A MYSQL USANDO POOL (Evita ECONNRESET)
 // -------------------
-const connection = mysql.createConnection({
+const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'simove',
-  port: process.env.DB_PORT || 3306
+  port: process.env.DB_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
-connection.connect((err) => {
+// Prueba la conexión inicial
+pool.getConnection((err, connection) => {
   if (err) {
     console.error('\x1b[31m[ERROR DB]\x1b[0m en auth.js:', err.message);
   } else {
-    console.log('\x1b[34m[AUTH]\x1b[0m Conexión a DB lista para autenticación.');
+    console.log('\x1b[34m[AUTH]\x1b[0m Pool de conexiones listo para autenticación.');
+    connection.release(); // Importante liberar la conexión al pool
   }
 });
+
+// SE ELIMINÓ pool.connect() ya que el pool se maneja solo con getConnection
 
 // -------------------
 // RUTA: LOGIN
@@ -37,7 +44,8 @@ router.post('/login', (req, res) => {
 
   const query = 'SELECT id_usuario, nombre_usuario, rol FROM usuarios WHERE nombre_usuario = ? AND password = ?';
   
-  connection.query(query, [nombre_usuario, password], (err, results) => {
+  // El pool gestiona automáticamente la conexión para la consulta
+  pool.query(query, [nombre_usuario, password], (err, results) => {
     if (err) {
       console.error('\x1b[31m[ERROR LOGIN]\x1b[0m', err);
       return res.status(500).json({
@@ -55,7 +63,6 @@ router.post('/login', (req, res) => {
 
     const user = results[0];
 
-    // Guardar usuario en sesión (Express-Session)
     req.session.user = {
       id_usuario: user.id_usuario,
       nombre_usuario: user.nombre_usuario,
@@ -80,7 +87,7 @@ router.post('/logout', (req, res) => {
       if (err) {
         return res.status(500).json({ success: false, message: 'No se pudo cerrar sesión' });
       }
-      res.clearCookie('connect.sid'); // Limpia la cookie de sesión
+      res.clearCookie('connect.sid');
       return res.json({ success: true, message: 'Sesión cerrada correctamente' });
     });
   } else {

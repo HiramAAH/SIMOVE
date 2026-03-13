@@ -56,7 +56,8 @@
       errorDiv.textContent = '';
 
       try {
-        const respuesta = await fetch('/login', {
+        // En public/index.html busca la función login y déjala así:
+        const respuesta = await fetch('https://simove.onrender.com/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nombre_usuario, password })

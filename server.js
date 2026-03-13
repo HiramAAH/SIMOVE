@@ -68,16 +68,20 @@ let usuariosActivos = {};
 let rutasActivas = {}; // <-- NUEVA MEMORIA PARA EL MAPA ADMIN
 
 io.on('connection', (socket) => {
-
-  const req = socket.request;
-  const user = req.session?.user;
+  
+  // Magia aquí: Si no hay cookie (APK), toma los datos del query
+  const user = socket.request.session?.user || socket.handshake.query;
   let idRutaActual = 1; 
 
-  if (!user) return; 
+  // Si a pesar de todo no hay usuario, cancelamos
+  if (!user || !user.nombre_usuario) {
+    console.log("\x1b[31m[SOCKET]\x1b[0m Conexión rechazada: Sin credenciales.");
+    return; 
+  }
   
   usuariosActivos[socket.id] = user;
-  console.log(`\x1b[35m[LOGIN]\x1b[0m ${user.nombre_usuario} inició sesión (${user.rol})`);
-
+  console.log(`\x1b[35m[LOGIN SOCKET]\x1b[0m ${user.nombre_usuario} conectado (${user.rol})`);
+  
   // Si un admin se conecta, enviarle el estado actual de las rutas inmediatamente
   if (user.rol === 'admin') {
     socket.emit('estado_rutas', rutasActivas);

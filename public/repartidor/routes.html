@@ -77,7 +77,17 @@
   <script src="/socket.io/socket.io.js"></script>
 
 <script>
-  const socket = io('https://simove.onrender.com');
+  // Leer quién soy desde la memoria del celular
+  const usuario = JSON.parse(localStorage.getItem('usuario'));
+
+  // Conectar enviando mis credenciales explícitamente
+  const socket = io('https://simove.onrender.com', {
+    query: {
+      id_usuario: usuario.id_usuario,
+      nombre_usuario: usuario.nombre_usuario,
+      rol: usuario.rol
+    }
+  });
 
   let rutaActiva = false;
   let totalGarrafones = 0;
