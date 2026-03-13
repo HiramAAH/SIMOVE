@@ -1,4 +1,5 @@
 // server.js
+require('dotenv').config(); // <-- 1. IMPORTANTE: Cargar variables de entorno
 const express = require('express');
 const path = require('path');
 const http = require('http');
@@ -6,27 +7,36 @@ const { Server } = require('socket.io');
 const session = require('express-session');
 const authRoutes = require('./routes/auth');
 const mysql = require('mysql2'); 
+const cors = require('cors'); // <-- 2. Agregar CORS para la APK
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; //
 
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: { origin: "*", methods: ["GET", "POST"] } // Permitir conexiones de la App
+});
 
 // -------------------
-// CONEXIÓN A BASE DE DATOS
+// CONEXIÓN A BASE DE DATOS (REMOTA)
 // -------------------
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'simove'
+  host: process.env.DB_HOST || 'localhost',     //
+  user: process.env.DB_USER || 'root',          //
+  password: process.env.DB_PASSWORD || '',      //
+  database: process.env.DB_NAME || 'simove',    //
+  port: process.env.DB_PORT || 3306             //
 });
 
 db.connect((err) => {
   if (err) console.error('\x1b[31m[ERROR DB]\x1b[0m en server.js:', err);
-  else console.log('\x1b[36m[SISTEMA]\x1b[0m DB MySQL Conectada correctamente.');
+  else console.log('\x1b[36m[SISTEMA]\x1b[0m DB MySQL Remota Conectada.');
 });
+
+// Middlewares
+app.use(cors()); //
+app.use(express.json());
+app.use(express.static('public'));
 
 const sessionMiddleware = session({
   secret: 'clave_super_secreta',
@@ -34,8 +44,6 @@ const sessionMiddleware = session({
   saveUninitialized: false
 });
 
-app.use(express.json());
-app.use(express.static('public'));
 app.use(sessionMiddleware);
 app.use('/', authRoutes);
 
@@ -147,5 +155,5 @@ app.get('/api/mis-cortes', (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\x1b[32mServidor corriendo en http://localhost:${PORT}\x1b[0m`);
+  console.log(`\x1b[32mServidor corriendo en el puerto ${PORT}\x1b[0m`);
 });
