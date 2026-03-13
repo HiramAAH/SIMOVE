@@ -20,17 +20,23 @@ const io = new Server(server, {
 // -------------------
 // CONEXIÓN A BASE DE DATOS (REMOTA)
 // -------------------
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || 'localhost',     //
-  user: process.env.DB_USER || 'root',          //
-  password: process.env.DB_PASSWORD || '',      //
-  database: process.env.DB_NAME || 'simove',    //
-  port: process.env.DB_PORT || 3306             //
+const db = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'simove',
+  port: process.env.DB_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
-db.connect((err) => {
+db.getConnection((err, connection) => {
   if (err) console.error('\x1b[31m[ERROR DB]\x1b[0m en server.js:', err);
-  else console.log('\x1b[36m[SISTEMA]\x1b[0m DB MySQL Remota Conectada.');
+  else {
+    console.log('\x1b[36m[SISTEMA]\x1b[0m DB MySQL Remota Conectada.');
+    connection.release();
+  }
 });
 
 // Middlewares
