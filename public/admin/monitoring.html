@@ -1,50 +1,248 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Monitoreo - Admin</title>
-<script src="/socket.io/socket.io.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Monitoreo GPS - Admin</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      background-color: #f4f6f9;
+      flex-direction: row; /* Por defecto en PC: de izquierda a derecha */
+    }
+
+    /* Contenedor del Mapa */
+    #map-container {
+      width: 75%;
+      height: 100vh;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Panel Lateral de Repartidores */
+    #sidebar {
+      width: 25%;
+      height: 100vh;
+      background-color: #ffffff;
+      box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+      overflow-y: auto;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-panel {
+      color: #1C6EA4;
+      border-bottom: 2px solid #1C6EA4;
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    .btn-regresar {
+      margin-top: 10px;
+      padding: 8px 15px;
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      width: 100%;
+      transition: background-color 0.3s;
+    }
+    .btn-regresar:hover {
+      background-color: #5a6268;
+    }
+
+    /* Tarjeta de cada repartidor */
+    .driver-card {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .driver-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      margin: 0 0 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .driver-name span { /* Puntito verde de activo */
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background-color: #28a745;
+      border-radius: 50%;
+    }
+    .info-row {
+      font-size: 14px;
+      margin: 5px 0;
+      color: #555;
+    }
+    .info-row strong { color: #222; }
+    .ventas-badge {
+      color: #28a745;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    /* Mensaje cuando no hay nadie */
+    .empty-state {
+      text-align: center;
+      color: #888;
+      font-style: italic;
+      margin-top: 20px;
+    }
+
+    /* =========================================
+       DISEÑO RESPONSIVO (Para Celulares)
+       ========================================= */
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column; /* Cambia a formato vertical de arriba a abajo */
+      }
+      #map-container {
+        width: 100%;
+        height: 50vh; /* El mapa toma el 50% de la pantalla */
+      }
+      #sidebar {
+        width: 100%;
+        height: 50vh; /* El panel toma el otro 50% de la pantalla */
+        border-top: 3px solid #1C6EA4;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      }
+    }
+  </style>
 </head>
 <body>
 
-<h2>Monitoreo en tiempo real (Abre la consola F12)</h2>
-<div id="logUbicaciones" style="background:#222; color:#0f0; padding:10px; height:300px; overflow-y:auto; font-family:monospace;">
-  > Esperando datos de GPS...<br>
-</div>
+  <div id="map-container">
+    <div id="map"></div>
+  </div>
 
-<script>
-const socket = io();
-const logDiv = document.getElementById('logUbicaciones');
+  <div id="sidebar">
+    <div class="header-panel">
+      <h2 style="margin-top: 0;">SIMOVE Admin</h2>
+      <p style="margin:0; font-size:14px; color:#666;">Monitoreo en Tiempo Real</p>
+      
+      <button class="btn-regresar" onclick="window.location.href='dashboard.html'">
+        ⬅ Regresar al Panel
+      </button>
+    </div>
+    
+    <div id="drivers-list">
+      <div class="empty-state">Esperando conexión de repartidores...</div>
+    </div>
+  </div>
 
-socket.on('connect', () => {
-  console.log('Admin conectado al monitoreo');
-});
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
 
-socket.on('usuarios_activos', (lista) => {
-  console.log('Usuarios activos actualmente:');
-  lista.forEach(u => {
-    console.log(`${u.nombre_usuario} (${u.rol})`);
-  });
-});
+  <script>
+    const socket = io();
+    const driversListDiv = document.getElementById('drivers-list');
 
-socket.on('usuario_ingreso', (user) => {
-  console.log(`${user.nombre_usuario} ingresó (${user.rol})`);
-});
+    // Inicializar Mapa (Centrado en San Luis Potosí)
+    const map = L.map('map').setView([22.1565, -100.9754], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap SIMOVE'
+    }).addTo(map);
 
-socket.on('usuario_salida', (user) => {
-  console.log(`${user.nombre_usuario} cerró sesión o perdió conexión`);
-});
-socket.on('ubicacion_recibida', (datos) => {
-  const mensaje = `${datos.usuario} (${datos.rol}): Lat ${datos.lat.toFixed(5)}, Lng ${datos.lng.toFixed(5)} (Precisión: ${datos.precision.toFixed(1)}m)`;
-  
-  // Mostrar en consola F12
-  console.log(mensaje);
-  
-  // Mostrar también en la pantalla
-  logDiv.innerHTML += `> ${mensaje}<br>`;
-  logDiv.scrollTop = logDiv.scrollHeight; // Auto-scroll
-});
-</script>
+    let markers = {}; 
+    let estadoActualRutas = {};
 
+    socket.on('estado_rutas', (rutasActivas) => {
+      estadoActualRutas = rutasActivas;
+      actualizarInterfaz();
+    });
+
+    function actualizarInterfaz() {
+      const repartidores = Object.values(estadoActualRutas);
+
+      if (repartidores.length === 0) {
+        driversListDiv.innerHTML = '<div class="empty-state">No hay repartidores en ruta actualmente.</div>';
+        for (let nombre in markers) {
+          map.removeLayer(markers[nombre]);
+        }
+        markers = {};
+        return;
+      }
+
+      driversListDiv.innerHTML = ''; 
+
+      repartidores.forEach(rep => {
+        // Tarjeta
+        const card = document.createElement('div');
+        card.className = 'driver-card';
+        card.innerHTML = `
+          <h3 class="driver-name"><span></span> ${rep.usuario}</h3>
+          <div class="info-row">Ventas: <span class="ventas-badge">${rep.ventas} garrafones</span></div>
+          <div class="info-row">Tiempo en ruta: <strong id="time-${rep.usuario}"></strong></div>
+          <div class="info-row" style="font-size:12px; margin-top:10px;">
+            ${rep.lat ? 'GPS Activo' : 'Esperando señal GPS...'}
+          </div>
+        `;
+        driversListDiv.appendChild(card);
+
+        // Mapa
+        if (rep.lat && rep.lng) {
+          if (markers[rep.usuario]) {
+            markers[rep.usuario].setLatLng([rep.lat, rep.lng]);
+          } else {
+            const nuevoPin = L.marker([rep.lat, rep.lng]).addTo(map);
+            nuevoPin.bindPopup(`<b>Repartidor:</b> ${rep.usuario}<br><b>Ventas:</b> ${rep.ventas}`).openPopup();
+            markers[rep.usuario] = nuevoPin;
+            map.setView([rep.lat, rep.lng], 15);
+          }
+        }
+      });
+
+      for (let nombreEnMapa in markers) {
+        if (!estadoActualRutas[nombreEnMapa]) {
+          map.removeLayer(markers[nombreEnMapa]);
+          delete markers[nombreEnMapa];
+        }
+      }
+    }
+
+    // Cronómetro
+    setInterval(() => {
+      const ahora = Date.now();
+      Object.values(estadoActualRutas).forEach(rep => {
+        const timeElement = document.getElementById(`time-${rep.usuario}`);
+        if (timeElement && rep.horaInicio) {
+          const diferencia = ahora - rep.horaInicio;
+          const horas = Math.floor((diferencia / (1000 * 60 * 60)) % 24);
+          const minutos = Math.floor((diferencia / 1000 / 60) % 60);
+          const segundos = Math.floor((diferencia / 1000) % 60);
+
+          const formateado = 
+            (horas > 0 ? horas + "h " : "") + 
+            (minutos < 10 ? "0" : "") + minutos + "m " + 
+            (segundos < 10 ? "0" : "") + segundos + "s";
+            
+          timeElement.innerText = formateado;
+        }
+      });
+    }, 1000);
+
+  </script>
 </body>
 </html>

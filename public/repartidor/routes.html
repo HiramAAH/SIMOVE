@@ -115,12 +115,7 @@
 
           logDebug(`Lat: ${latitude.toFixed(5)} | Lng: ${longitude.toFixed(5)}`);
           
-          // Emitimos al servidor con precisión incluida
-          socket.emit('nueva_ubicacion', { 
-            lat: latitude, 
-            lng: longitude, 
-            precision: accuracy 
-          });
+          socket.emit('nueva_ubicacion', { lat: latitude, lng: longitude, precision: accuracy });
         },
         (err) => { logDebug(`Error GPS: ${err.message}`, "red"); },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -157,6 +152,10 @@
       ventasDiv.textContent = `Garrafones vendidos: ${totalGarrafones}`;
       modal.style.display = 'none';
       logDebug(`Venta registrada: +${vendidos}`, "cyan");
+      
+      // NUEVO: Avisar al servidor de la venta en tiempo real
+      socket.emit('venta_registrada', { total: totalGarrafones });
+      
     } else {
       alert('Ingresa un número válido.');
     }
