@@ -109,14 +109,14 @@
     // Función principal para obtener los datos del servidor
     async function cargarCortes() {
       try {
-        const respuesta = await fetch('/api/mis-cortes');
+        // 1. Obtener el usuario local
+        const usuario = JSON.parse(localStorage.getItem('usuario'));
+        if (!usuario) throw new Error("No has iniciado sesión.");
+
+        // 2. Usar URL completa de Render y pasar el ID
+        const respuesta = await fetch(`https://simove.onrender.com/api/mis-cortes?id_usuario=${usuario.id_usuario}`);
         
-        if (!respuesta.ok) {
-           if(respuesta.status === 401) {
-             throw new Error("No has iniciado sesión.");
-           }
-           throw new Error("Error al consultar el servidor.");
-        }
+        if (!respuesta.ok) throw new Error("Error al consultar el servidor.");
 
         const cortesDB = await respuesta.json();
 

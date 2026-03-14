@@ -74,7 +74,7 @@
     </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://simove.onrender.com/socket.io/socket.io.js"></script>
 
 <script>
   // Leer quién soy desde la memoria del celular
@@ -110,26 +110,47 @@
     debugPanel.scrollTop = debugPanel.scrollHeight;
   }
 
-  function iniciarTransmisionGPS() {
-    if ("geolocation" in navigator) {
-      logDebug("Activando GPS...", "yellow");
-      
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          const { latitude, longitude, accuracy } = pos.coords;
+  async function iniciarTransmisionGPS() {
+    // Si estamos en la APK, usamos el plugin de segundo plano
+    if (window.Capacitor && window.Capacitor.Plugins.BackgroundGeolocation) {
+      logDebug("Activando GPS en Segundo Plano...", "yellow");
 
-          if (accuracy > 4000) { 
-             logDebug(`Baja precisión (${accuracy.toFixed(0)}m). Ignorando...`, "orange");
-             return;
+      window.Capacitor.Plugins.BackgroundGeolocation.addWatcher(
+        {
+          backgroundMessage: "SIMOVE está monitoreando tu ruta.", // Texto de la notificación
+          backgroundTitle: "Ruta Activa",
+          requestPermissions: true,
+          stale: false,
+          distanceFilter: 3 // Transmitir cada 5 metros de movimiento
+        },
+        function callback(location, error) {
+          if (error) {
+            if (error.code === "NOT_AUTHORIZED") {
+              alert("Debes permitir la ubicación 'Todo el tiempo' para que funcione en segundo plano.");
+            }
+            return logDebug(`Error GPS: ${error.message}`, "red");
           }
 
-          logDebug(`Lat: ${latitude.toFixed(5)} | Lng: ${longitude.toFixed(5)}`);
-          
-          socket.emit('nueva_ubicacion', { lat: latitude, lng: longitude, precision: accuracy });
-        },
-        (err) => { logDebug(`Error GPS: ${err.message}`, "red"); },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
+          logDebug(`Lat: ${location.latitude.toFixed(5)} | Lng: ${location.longitude.toFixed(5)}`);
+          socket.emit('nueva_ubicacion', { lat: location.latitude, lng: location.longitude, precision: location.accuracy });
+        }
+      ).then(function(watcher_id) {
+        watchId = watcher_id;
+      });
+
+    } else {
+      // Si estamos en la Web, usamos el método tradicional
+      if ("geolocation" in navigator) {
+        logDebug("Activando GPS Web...", "yellow");
+        watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude, longitude, accuracy } = pos.coords;
+            socket.emit('nueva_ubicacion', { lat: latitude, lng: longitude, precision: accuracy });
+          },
+          (err) => { logDebug(`Error GPS: ${err.message}`, "red"); },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      }
     }
   }
 
@@ -175,7 +196,13 @@
     const confirmacion = confirm(`¿Estás seguro de terminar tu turno?\n\nHas reportado un total de ${totalGarrafones} garrafones vendidos.`);
     
     if (confirmacion) {
-      if (watchId) navigator.geolocation.clearWatch(watchId);
+      if (watchId) {
+        if (window.Capacitor && window.Capacitor.Plugins.BackgroundGeolocation) {
+          window.Capacitor.Plugins.BackgroundGeolocation.removeWatcher({ id: watchId });
+        } else {
+          navigator.geolocation.clearWatch(watchId);
+        }
+      }
       rutaActiva = false;
       
       logDebug("Guardando datos en el servidor...", "yellow");
