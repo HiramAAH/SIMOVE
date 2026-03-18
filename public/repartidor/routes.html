@@ -111,17 +111,16 @@
   }
 
   async function iniciarTransmisionGPS() {
-    // Si estamos en la APK, usamos el plugin de segundo plano
     if (window.Capacitor && window.Capacitor.Plugins.BackgroundGeolocation) {
       logDebug("Activando GPS en Segundo Plano...", "yellow");
 
       window.Capacitor.Plugins.BackgroundGeolocation.addWatcher(
         {
-          backgroundMessage: "SIMOVE está monitoreando tu ruta.", // Texto de la notificación
+          backgroundMessage: "SIMOVE está monitoreando tu ruta.",
           backgroundTitle: "Ruta Activa",
           requestPermissions: true,
           stale: false,
-          distanceFilter: 3 // Transmitir cada 5 metros de movimiento
+          distanceFilter: 3 
         },
         function callback(location, error) {
           if (error) {
@@ -139,12 +138,13 @@
       });
 
     } else {
-      // Si estamos en la Web, usamos el método tradicional
       if ("geolocation" in navigator) {
         logDebug("Activando GPS Web...", "yellow");
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const { latitude, longitude, accuracy } = pos.coords;
+            // Línea agregada para imprimir en web
+            logDebug(`Lat: ${latitude.toFixed(5)} | Lng: ${longitude.toFixed(5)}`); 
             socket.emit('nueva_ubicacion', { lat: latitude, lng: longitude, precision: accuracy });
           },
           (err) => { logDebug(`Error GPS: ${err.message}`, "red"); },

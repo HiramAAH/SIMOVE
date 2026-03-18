@@ -4,191 +4,156 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Estadísticas - Admin</title>
-
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body{
-    font-family: Arial, sans-serif;
-    background:#f4f6f9;
-    padding:20px;
-}
-
-h1{
-    color:#1C6EA4;
-}
-
-.container{
-    margin-top:20px;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    background:white;
-    margin-top:20px;
-}
-
-th, td{
-    padding:10px;
-    border:1px solid #ccc;
-    text-align:center;
-}
-
-th{
-    background:#1C6EA4;
-    color:white;
-}
-
-button{
-    padding:8px 14px;
-    margin:5px;
-    border:none;
-    border-radius:6px;
-    background:#1C6EA4;
-    color:white;
-    cursor:pointer;
-}
-
-button:hover{
-    background:#155a8a;
-}
-
-input{
-    padding:6px;
-    margin:5px;
-}
-</style>
 </head>
-<body>
+<body class="bg-light">
 
-<h1>Estadísticas del Sistema</h1>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-warning"><i class="bi bi-graph-up"></i> Estadísticas de Ventas</h2>
+        <a href="dashboard.html" class="btn btn-secondary">Regresar</a>
+    </div>
 
-<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5>Filtro Diario</h5>
+                    <input type="date" id="filtroDia" class="form-control mb-2">
+                    <button class="btn btn-primary w-100 mb-2" onclick="filtrarPorDia()">Buscar Día Específico</button>
+                    <button class="btn btn-outline-secondary w-100" onclick="cargarDatos(true)">Mostrar Histórico Completo</button>
+                </div>
+            </div>
+        </div>
 
-    <h3>Buscar por Día</h3>
-    <input type="date" id="filtroDia">
-    <button onclick="filtrarPorDia()">Buscar</button>
-    <button onclick="mostrarTodos()">Mostrar Todos</button>
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5>Resumen Gráfico</h5>
+                    <canvas id="graficaVentas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <h3>Listado de Cortes</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Fecha</th>
-                <th>Repartidor</th>
-                <th>Garrafones Vendidos</th>
-                <th>Total ($)</th>
-            </tr>
-        </thead>
-        <tbody id="tablaCortes"></tbody>
-    </table>
-
-</div>
-
-<div class="container">
-    <h3>Ventas Totales de la Semana (Todos los Repartidores)</h3>
-    <canvas id="graficaSemanal"></canvas>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5>Detalle de Cortes</h5>
+            <table class="table table-striped text-center mt-3">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Repartidor</th>
+                        <th>Garrafones Vendidos</th>
+                        <th>Ingreso Total ($)</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCortes"></tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script>
-
-// ---------------------
-// DATOS SIMULADOS
-// ---------------------
-
-let cortes = [
-    {fecha:"2025-03-24", repartidor:"Ivan", vendidos:20},
-    {fecha:"2025-03-24", repartidor:"Luis", vendidos:15},
-    {fecha:"2025-03-25", repartidor:"Ivan", vendidos:18},
-    {fecha:"2025-03-25", repartidor:"Luis", vendidos:22},
-    {fecha:"2025-03-26", repartidor:"Ivan", vendidos:25},
-    {fecha:"2025-03-27", repartidor:"Luis", vendidos:19},
-    {fecha:"2025-03-28", repartidor:"Ivan", vendidos:30}
-];
-
 const PRECIO = 15;
-const tabla = document.getElementById("tablaCortes");
+let cortesGlobales = [];
+let chartInstance = null;
 
-// ---------------------
-// RENDER TABLA
-// ---------------------
+async function cargarDatos(mostrarTodos = false) {
+    try {
+        const response = await fetch('https://simove.onrender.com/api/estadisticas');
+        cortesGlobales = await response.json();
+        
+        // Convertir formato de fecha de la DB a YYYY-MM-DD
+        cortesGlobales = cortesGlobales.map(c => ({
+            ...c,
+            fechaLimpia: c.fecha.split('T')[0]
+        }));
 
-function renderTabla(data){
-    tabla.innerHTML = "";
-
-    data.forEach(corte => {
-        tabla.innerHTML += `
-            <tr>
-                <td>${corte.fecha}</td>
-                <td>${corte.repartidor}</td>
-                <td>${corte.vendidos}</td>
-                <td>$${corte.vendidos * PRECIO}</td>
-            </tr>
-        `;
-    });
+        if (mostrarTodos) {
+            document.getElementById('filtroDia').value = '';
+            renderTabla(cortesGlobales);
+            generarGrafica(cortesGlobales);
+        } else {
+            // Por defecto mostrar solo lo de hoy
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('filtroDia').value = hoy;
+            filtrarPorDia();
+        }
+    } catch (error) {
+        console.error("Error:", error);
+    }
 }
 
-function mostrarTodos(){
-    renderTabla(cortes);
-}
-
-// ---------------------
-// FILTRO POR DÍA
-// ---------------------
-
-function filtrarPorDia(){
+function filtrarPorDia() {
     const fecha = document.getElementById("filtroDia").value;
-    if(!fecha){
-        alert("Selecciona una fecha.");
+    if(!fecha) return;
+
+    const filtrados = cortesGlobales.filter(c => c.fechaLimpia === fecha);
+    renderTabla(filtrados);
+    generarGrafica(filtrados);
+}
+
+function renderTabla(data) {
+    const tbody = document.getElementById("tablaCortes");
+    tbody.innerHTML = "";
+    
+    if(data.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='4'>No hay ventas registradas en esta selección.</td></tr>";
         return;
     }
 
-    const filtrados = cortes.filter(c => c.fecha === fecha);
-    renderTabla(filtrados);
+    let totalDinero = 0;
+    data.forEach(corte => {
+        const total = corte.vendidos * PRECIO;
+        totalDinero += total;
+        tbody.innerHTML += `
+            <tr>
+                <td>${corte.fechaLimpia}</td>
+                <td><strong>${corte.repartidor}</strong></td>
+                <td>${corte.vendidos}</td>
+                <td class="text-success fw-bold">$${total}.00</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML += `
+        <tr class="table-warning fw-bold">
+            <td colspan="3" class="text-end">TOTAL RECAUDADO:</td>
+            <td class="text-success">$${totalDinero}.00</td>
+        </tr>
+    `;
 }
 
-// ---------------------
-// GRAFICA SEMANAL
-// ---------------------
-
-function generarGrafica(){
-
-    const diasSemana = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
-    let ventasPorDia = [0,0,0,0,0,0,0];
-
-    cortes.forEach(corte => {
-        const fecha = new Date(corte.fecha);
-        let dia = fecha.getDay(); // 0 domingo, 1 lunes...
-        dia = dia === 0 ? 6 : dia - 1; // ajustar para lunes=0
-        ventasPorDia[dia] += corte.vendidos;
+function generarGrafica(data) {
+    // Agrupar ventas por repartidor para la gráfica
+    const ventasPorRepartidor = {};
+    data.forEach(c => {
+        ventasPorRepartidor[c.repartidor] = (ventasPorRepartidor[c.repartidor] || 0) + c.vendidos;
     });
 
-    const ctx = document.getElementById("graficaSemanal").getContext("2d");
+    const etiquetas = Object.keys(ventasPorRepartidor);
+    const valores = Object.values(ventasPorRepartidor);
 
-    new Chart(ctx,{
-        type:"bar",
-        data:{
-            labels:diasSemana,
-            datasets:[{
-                label:"Garrafones Vendidos",
-                data:ventasPorDia
+    if (chartInstance) chartInstance.destroy();
+
+    const ctx = document.getElementById("graficaVentas").getContext("2d");
+    chartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: etiquetas,
+            datasets: [{
+                label: "Garrafones Vendidos",
+                data: valores,
+                backgroundColor: "#1C6EA4"
             }]
         },
-        options:{
-            responsive:true,
-            plugins:{
-                legend:{display:true}
-            }
-        }
+        options: { responsive: true }
     });
 }
 
-// Inicializar
-mostrarTodos();
-generarGrafica();
-
+window.onload = () => cargarDatos(true);
 </script>
-
 </body>
 </html>

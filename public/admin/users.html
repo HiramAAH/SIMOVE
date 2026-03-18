@@ -4,202 +4,151 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Usuarios - Admin</title>
-
-<style>
-body{
-    font-family: Arial, sans-serif;
-    background:#f4f6f9;
-    padding:20px;
-}
-
-h1{
-    color:#1C6EA4;
-}
-
-button{
-    padding:8px 14px;
-    margin:5px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
-    background:#1C6EA4;
-    color:white;
-}
-
-button:hover{
-    background:#155a8a;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    margin-top:20px;
-    background:white;
-}
-
-th, td{
-    padding:10px;
-    border:1px solid #ccc;
-    text-align:center;
-}
-
-th{
-    background:#1C6EA4;
-    color:white;
-}
-
-.modal{
-    display:none;
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,0.5);
-    justify-content:center;
-    align-items:center;
-}
-
-.modal-content{
-    background:white;
-    padding:25px;
-    border-radius:10px;
-    width:90%;
-    max-width:400px;
-}
-
-.modal-content input, .modal-content select{
-    width:100%;
-    padding:8px;
-    margin:8px 0;
-}
-
-</style>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 </head>
-<body>
+<body class="bg-light">
 
-<h1>Gestión de Usuarios</h1>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-primary"><i class="bi bi-people"></i> Gestión de Usuarios</h2>
+        <div>
+            <button class="btn btn-success" onclick="abrirModalNuevo()"><i class="bi bi-person-plus"></i> Agregar Usuario</button>
+            <a href="dashboard.html" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Regresar</a>
+        </div>
+    </div>
 
-<button id="addUserBtn">Agregar Usuario</button>
-
-<table>
-    <thead>
-        <tr>
-            <th>Nombre</th>
-            <th>Rol</th>
-            <th>Usuario</th>
-            <th>Contraseña</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody id="userTable"></tbody>
-</table>
-
-<!-- Modal -->
-<div class="modal" id="userModal">
-    <div class="modal-content">
-        <h3 id="modalTitle">Nuevo Usuario</h3>
-        <input type="text" id="nombre" placeholder="Nombre completo">
-        <select id="rol">
-            <option value="repartidor">Repartidor</option>
-            <option value="admin">Administrador</option>
-        </select>
-        <input type="text" id="usuario" placeholder="Usuario">
-        <input type="password" id="password" placeholder="Contraseña">
-        <button id="saveUser">Guardar</button>
-        <button onclick="cerrarModal()">Cancelar</button>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover text-center">
+                <thead class="table-primary">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Rol</th>
+                        <th>Contraseña</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="userTable">
+                    <tr><td colspan="5">Cargando usuarios desde la base de datos...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
+<div class="modal fade" id="userModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modalTitle">Nuevo Usuario</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="userId">
+        <div class="mb-3">
+            <label>Nombre de Usuario</label>
+            <input type="text" id="nombre" class="form-control" placeholder="Ej: Juan Perez">
+        </div>
+        <div class="mb-3">
+            <label>Rol</label>
+            <select id="rol" class="form-select">
+                <option value="repartidor">Repartidor</option>
+                <option value="admin">Administrador</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>Contraseña</label>
+            <input type="text" id="password" class="form-control" placeholder="Contraseña">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
-let editIndex = null;
+const myModal = new bootstrap.Modal(document.getElementById('userModal'));
+const urlBase = 'https://simove.onrender.com/api/usuarios';
 
-const userTable = document.getElementById("userTable");
-const modal = document.getElementById("userModal");
-
-function renderUsers(){
-    userTable.innerHTML = "";
-
-    usuarios.forEach((user, index) => {
-        userTable.innerHTML += `
-            <tr>
-                <td>${user.nombre}</td>
-                <td>${user.rol}</td>
-                <td>${user.usuario}</td>
-                <td>${user.password}</td>
-                <td>
-                    <button onclick="editarUsuario(${index})">Editar</button>
-                    <button onclick="eliminarUsuario(${index})">Eliminar</button>
-                </td>
-            </tr>
-        `;
-    });
-
-    localStorage.setItem("usuarios", JSON.stringify(usuarios));
+async function cargarUsuarios() {
+    try {
+        const response = await fetch(urlBase);
+        const usuarios = await response.json();
+        const tbody = document.getElementById("userTable");
+        tbody.innerHTML = "";
+        
+        usuarios.forEach(user => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${user.id_usuario}</td>
+                    <td><strong>${user.nombre_usuario}</strong></td>
+                    <td><span class="badge ${user.rol === 'admin' ? 'bg-danger' : 'bg-success'}">${user.rol.toUpperCase()}</span></td>
+                    <td>${user.password}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="abrirModalEditar(${user.id_usuario}, '${user.nombre_usuario}', '${user.rol}', '${user.password}')"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarUsuario(${user.id_usuario})"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        console.error("Error cargando usuarios", error);
+    }
 }
 
-document.getElementById("addUserBtn").addEventListener("click", () => {
-    editIndex = null;
+function abrirModalNuevo() {
     document.getElementById("modalTitle").textContent = "Nuevo Usuario";
-    limpiarFormulario();
-    modal.style.display = "flex";
-});
-
-document.getElementById("saveUser").addEventListener("click", () => {
-    const nombre = document.getElementById("nombre").value;
-    const rol = document.getElementById("rol").value;
-    const usuario = document.getElementById("usuario").value;
-    const password = document.getElementById("password").value;
-
-    if(!nombre || !usuario || !password){
-        alert("Completa todos los campos.");
-        return;
-    }
-
-    const nuevoUsuario = {nombre, rol, usuario, password};
-
-    if(editIndex === null){
-        usuarios.push(nuevoUsuario);
-    } else {
-        usuarios[editIndex] = nuevoUsuario;
-    }
-
-    cerrarModal();
-    renderUsers();
-});
-
-function editarUsuario(index){
-    editIndex = index;
-    const user = usuarios[index];
-
-    document.getElementById("modalTitle").textContent = "Editar Usuario";
-    document.getElementById("nombre").value = user.nombre;
-    document.getElementById("rol").value = user.rol;
-    document.getElementById("usuario").value = user.usuario;
-    document.getElementById("password").value = user.password;
-
-    modal.style.display = "flex";
-}
-
-function eliminarUsuario(index){
-    if(confirm("¿Seguro que deseas eliminar este usuario?")){
-        usuarios.splice(index,1);
-        renderUsers();
-    }
-}
-
-function cerrarModal(){
-    modal.style.display = "none";
-    limpiarFormulario();
-}
-
-function limpiarFormulario(){
+    document.getElementById("userId").value = "";
     document.getElementById("nombre").value = "";
     document.getElementById("rol").value = "repartidor";
-    document.getElementById("usuario").value = "";
     document.getElementById("password").value = "";
+    myModal.show();
 }
 
-renderUsers();
-</script>
+function abrirModalEditar(id, nombre, rol, password) {
+    document.getElementById("modalTitle").textContent = "Editar Usuario";
+    document.getElementById("userId").value = id;
+    document.getElementById("nombre").value = nombre;
+    document.getElementById("rol").value = rol;
+    document.getElementById("password").value = password;
+    myModal.show();
+}
 
+async function guardarUsuario() {
+    const id = document.getElementById("userId").value;
+    const data = {
+        nombre_usuario: document.getElementById("nombre").value,
+        rol: document.getElementById("rol").value,
+        password: document.getElementById("password").value
+    };
+
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `${urlBase}/${id}` : urlBase;
+
+    await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    
+    myModal.hide();
+    cargarUsuarios();
+}
+
+async function eliminarUsuario(id) {
+    if(confirm("¿Seguro que deseas eliminar a este usuario permanentemente?")) {
+        await fetch(`${urlBase}/${id}`, { method: 'DELETE' });
+        cargarUsuarios();
+    }
+}
+
+window.onload = cargarUsuarios;
+</script>
 </body>
 </html>
