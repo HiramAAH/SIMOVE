@@ -83,7 +83,7 @@ io.on('connection', (socket) => {
   // 1. INICIO DE RUTA (DINÁMICO)
   socket.on('iniciar_ruta_db', () => {
     // Insertamos una nueva ruta en la tabla 'rutas' para obtener un ID real
-    const queryCrearRuta = 'INSERT INTO rutas (id_usuario, fecha_inicio) VALUES (?, NOW())';
+    const queryCrearRuta = 'INSERT INTO rutas (id_usuario, id_ruta_catalogo, fecha_inicio) VALUES (?, 1, NOW())';
     
     db.query(queryCrearRuta, [user.id_usuario], (err, result) => {
         if (err) {
