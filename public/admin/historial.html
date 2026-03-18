@@ -50,10 +50,15 @@
     let routeLayerGroup = L.layerGroup().addTo(map);
 
     async function cargarHistorial() {
+      const listDiv = document.getElementById('routes-list');
+      listDiv.innerHTML = '<div class="text-center text-muted mt-4">Cargando viajes...</div>';
+
       try {
+        // Fetch idéntico a records.html
         const res = await fetch('https://simove.onrender.com/api/historial/rutas');
+        if (!res.ok) throw new Error("Fallo de conexión. ¿Las APIs están en Render?");
+        
         const rutas = await res.json();
-        const listDiv = document.getElementById('routes-list');
         listDiv.innerHTML = '';
 
         if(rutas.length === 0) {
@@ -62,57 +67,62 @@
         }
 
         rutas.forEach(r => {
-          const fecha = new Date(r.fecha_inicio).toLocaleString('es-MX');
-          const div = document.createElement('div');
-          div.className = 'route-card';
-          div.innerHTML = `
-            <h6 class="mb-1">Repartidor: <strong class="text-primary">${r.nombre_usuario}</strong></h6>
-            <div style="font-size: 13px; color: #666;">Inicio: ${fecha}</div>
-            <div style="font-size: 14px; margin-top:5px;">Corte: <span class="badge-ventas">${r.ventas} garrafones</span></div>
-          `;
-          div.onclick = () => dibujarRuta(r.id_ruta, div);
-          listDiv.appendChild(div);
+          // Formato seguro de fecha igual al que sugeriste
+          const fechaObj = new Date(r.fecha_inicio);
+          const fechaServidor = new Date(r.fecha_inicio); // O corte.fecha
+            // Sumamos 6 horas en milisegundos (6 * 60 * 60 * 1000)
+            const fechaAjustada = new Date(fechaServidor.getTime() + (6 * 60 * 60 * 1000));
+
+            const fechaStr = fechaAjustada.toLocaleDateString('es-MX', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true // Opcional: para que salga 03:00 PM en lugar de 15:00
+            });
+            const div = document.createElement('div');
+            div.className = 'route-card';
+            div.innerHTML = `
+                <h6 class="mb-1">Repartidor: <strong class="text-primary">${r.nombre_usuario}</strong></h6>
+                <div style="font-size: 13px; color: #666;">Inicio: ${fechaStr}</div>
+                <div style="font-size: 14px; margin-top:5px;">Corte: <span class="badge-ventas">${r.ventas} garrafones</span></div>
+            `;
+            div.onclick = () => dibujarRuta(r.id_ruta, div);
+            listDiv.appendChild(div);
         });
-      } catch (err) {
-        console.error("Error cargando rutas", err);
-      }
+        } catch (err) {
+            console.error("Error cargando rutas", err);
+            listDiv.innerHTML = `<div class="text-center text-danger mt-4 fw-bold">${err.message}</div>`;
+        }
     }
 
     async function dibujarRuta(id_ruta, divElement) {
-      // Marcar visualmente la tarjeta activa
       document.querySelectorAll('.route-card').forEach(el => el.classList.remove('active'));
       divElement.classList.add('active');
 
       try {
         const res = await fetch(`https://simove.onrender.com/api/historial/coordenadas/${id_ruta}`);
+        if (!res.ok) throw new Error("Error al consultar coordenadas.");
         const coordenadas = await res.json();
 
-        routeLayerGroup.clearLayers(); // Limpiar el mapa
+        routeLayerGroup.clearLayers(); 
 
         if(coordenadas.length === 0) {
             alert("Esta ruta no registró ninguna coordenada GPS.");
             return;
         }
 
-        // Convertir formato para Leaflet
         const puntosLatLng = coordenadas.map(c => [c.lat, c.lng]);
-
-        // Dibujar la línea uniendo los puntos
         const polyline = L.polyline(puntosLatLng, { color: '#1C6EA4', weight: 5 }).addTo(routeLayerGroup);
 
-        // Marcador Inicio
         L.marker(puntosLatLng[0]).addTo(routeLayerGroup).bindPopup("<b>Inicio de Ruta</b>").openPopup();
-        
-        // Marcador Fin (Si hay más de 1 punto)
         if(puntosLatLng.length > 1) {
             L.circleMarker(puntosLatLng[puntosLatLng.length - 1], { color: 'red', radius: 6 }).addTo(routeLayerGroup).bindPopup("<b>Fin de Ruta</b>");
         }
-
-        // Centrar el mapa en la ruta dibujada
         map.fitBounds(polyline.getBounds());
-
       } catch (err) {
-        console.error("Error cargando coordenadas", err);
+        alert("Error cargando el trazado: " + err.message);
       }
     }
 

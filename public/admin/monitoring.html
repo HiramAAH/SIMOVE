@@ -196,6 +196,7 @@
       }
 
       driversListDiv.innerHTML = ''; 
+      const coordenadasActivas = []; // Arreglo para guardar todos los puntos GPS
 
       repartidores.forEach(rep => {
         // Tarjeta
@@ -213,22 +214,38 @@
 
         // Mapa
         if (rep.lat && rep.lng) {
+          coordenadasActivas.push([rep.lat, rep.lng]); // Agregamos el punto a la lista
+
           if (markers[rep.usuario]) {
+            // Mover el pin existente
             markers[rep.usuario].setLatLng([rep.lat, rep.lng]);
+            // Actualizar las ventas en el globo del mapa
+            markers[rep.usuario].getPopup().setContent(`<b>Repartidor:</b> ${rep.usuario}<br><b>Ventas:</b> ${rep.ventas}`);
           } else {
+            // Crear un pin nuevo
             const nuevoPin = L.marker([rep.lat, rep.lng]).addTo(map);
             nuevoPin.bindPopup(`<b>Repartidor:</b> ${rep.usuario}<br><b>Ventas:</b> ${rep.ventas}`).openPopup();
             markers[rep.usuario] = nuevoPin;
-            map.setView([rep.lat, rep.lng], 15);
           }
         }
       });
 
+      // Limpiar pines de repartidores que ya terminaron turno
       for (let nombreEnMapa in markers) {
         if (!estadoActualRutas[nombreEnMapa]) {
           map.removeLayer(markers[nombreEnMapa]);
           delete markers[nombreEnMapa];
         }
+      }
+      
+      if (coordenadasActivas.length === 1) {
+        // Si solo hay un repartidor, lo seguimos de cerca (zoom 15)
+        map.setView(coordenadasActivas[0], 15);
+      } else if (coordenadasActivas.length > 1) {
+        // Cuando Jetro y tú (u otros) estén en ruta simultáneamente, 
+        // alejamos la cámara para que todos quepan en la pantalla.
+        const limites = L.latLngBounds(coordenadasActivas);
+        map.fitBounds(limites, { padding: [50, 50] });
       }
     }
 

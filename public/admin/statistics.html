@@ -15,42 +15,48 @@
         <a href="dashboard.html" class="btn btn-secondary">Regresar</a>
     </div>
 
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h5>Filtro Diario</h5>
-                    <input type="date" id="filtroDia" class="form-control mb-2">
-                    <button class="btn btn-primary w-100 mb-2" onclick="filtrarPorDia()">Buscar Día Específico</button>
-                    <button class="btn btn-outline-secondary w-100" onclick="cargarDatos(true)">Mostrar Histórico Completo</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-8">
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h5>Resumen Gráfico</h5>
-                    <canvas id="graficaVentas"></canvas>
-                </div>
-            </div>
-        </div>
+    <div id="mensaje-estado" class="text-center text-muted mt-5">
+        <h4><i class="bi bi-hourglass-split"></i> Cargando estadísticas...</h4>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h5>Detalle de Cortes</h5>
-            <table class="table table-striped text-center mt-3">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Repartidor</th>
-                        <th>Garrafones Vendidos</th>
-                        <th>Ingreso Total ($)</th>
-                    </tr>
-                </thead>
-                <tbody id="tablaCortes"></tbody>
-            </table>
+    <div id="contenido-estadisticas" style="display: none;">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h5>Filtro Diario</h5>
+                        <input type="date" id="filtroDia" class="form-control mb-2">
+                        <button class="btn btn-primary w-100 mb-2" onclick="filtrarPorDia()">Buscar Día Específico</button>
+                        <button class="btn btn-outline-secondary w-100" onclick="cargarDatos(true)">Mostrar Histórico Completo</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h5>Resumen Gráfico</h5>
+                        <canvas id="graficaVentas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5>Detalle de Cortes</h5>
+                <table class="table table-striped text-center mt-3" id="tablaEstadisticas">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Repartidor</th>
+                            <th>Garrafones Vendidos</th>
+                            <th>Ingreso Total ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaCortes"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -61,28 +67,47 @@ let cortesGlobales = [];
 let chartInstance = null;
 
 async function cargarDatos(mostrarTodos = false) {
+    const mensaje = document.getElementById("mensaje-estado");
+    const contenido = document.getElementById("contenido-estadisticas");
+    
     try {
+        // Validación estricta igual que en records.html
         const response = await fetch('https://simove.onrender.com/api/estadisticas');
+        if (!response.ok) throw new Error("Las APIs no responden. Asegúrate de haber subido el nuevo server.js a GitHub.");
+
         cortesGlobales = await response.json();
         
-        // Convertir formato de fecha de la DB a YYYY-MM-DD
-        cortesGlobales = cortesGlobales.map(c => ({
-            ...c,
-            fechaLimpia: c.fecha.split('T')[0]
-        }));
+        // Formateo de fechas a prueba de fallos
+        cortesGlobales = cortesGlobales.map(c => {
+            const f = new Date(c.fecha);
+            const yyyy = f.getFullYear();
+            const mm = String(f.getMonth() + 1).padStart(2, '0');
+            const dd = String(f.getDate()).padStart(2, '0');
+            
+            return {
+                ...c,
+                fechaFiltro: `${yyyy}-${mm}-${dd}`, // Para el input HTML
+                fechaVista: f.toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' }) // Para la tabla
+            };
+        });
+
+        // Mostramos la interfaz
+        mensaje.style.display = "none";
+        contenido.style.display = "block";
 
         if (mostrarTodos) {
             document.getElementById('filtroDia').value = '';
             renderTabla(cortesGlobales);
             generarGrafica(cortesGlobales);
         } else {
-            // Por defecto mostrar solo lo de hoy
-            const hoy = new Date().toISOString().split('T')[0];
-            document.getElementById('filtroDia').value = hoy;
+            const hoy = new Date();
+            const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+            document.getElementById('filtroDia').value = fechaHoy;
             filtrarPorDia();
         }
     } catch (error) {
         console.error("Error:", error);
+        mensaje.innerHTML = `<h4 style="color: red;"><i class="bi bi-exclamation-triangle"></i> Error: ${error.message}</h4>`;
     }
 }
 
@@ -90,7 +115,7 @@ function filtrarPorDia() {
     const fecha = document.getElementById("filtroDia").value;
     if(!fecha) return;
 
-    const filtrados = cortesGlobales.filter(c => c.fechaLimpia === fecha);
+    const filtrados = cortesGlobales.filter(c => c.fechaFiltro === fecha);
     renderTabla(filtrados);
     generarGrafica(filtrados);
 }
@@ -110,7 +135,7 @@ function renderTabla(data) {
         totalDinero += total;
         tbody.innerHTML += `
             <tr>
-                <td>${corte.fechaLimpia}</td>
+                <td>${corte.fechaVista}</td>
                 <td><strong>${corte.repartidor}</strong></td>
                 <td>${corte.vendidos}</td>
                 <td class="text-success fw-bold">$${total}.00</td>
@@ -127,7 +152,6 @@ function renderTabla(data) {
 }
 
 function generarGrafica(data) {
-    // Agrupar ventas por repartidor para la gráfica
     const ventasPorRepartidor = {};
     data.forEach(c => {
         ventasPorRepartidor[c.repartidor] = (ventasPorRepartidor[c.repartidor] || 0) + c.vendidos;
@@ -143,17 +167,13 @@ function generarGrafica(data) {
         type: "bar",
         data: {
             labels: etiquetas,
-            datasets: [{
-                label: "Garrafones Vendidos",
-                data: valores,
-                backgroundColor: "#1C6EA4"
-            }]
+            datasets: [{ label: "Garrafones Vendidos", data: valores, backgroundColor: "#1C6EA4" }]
         },
         options: { responsive: true }
     });
 }
 
-window.onload = () => cargarDatos(true);
+window.onload = () => cargarDatos(false);
 </script>
 </body>
 </html>
