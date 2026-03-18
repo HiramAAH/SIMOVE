@@ -70,6 +70,16 @@ io.on('connection', (socket) => {
     socket.emit('estado_rutas', rutasActivas);
   }
 
+  socket.on('verificar_estado_ruta', (callback) => {
+    const ruta = rutasActivas[user.nombre_usuario];
+    if (ruta) {
+      // Si la ruta existe en la memoria del servidor, le devolvemos los datos
+      callback({ activa: true, ventas: ruta.ventas });
+    } else {
+      callback({ activa: false });
+    }
+  });
+
   socket.on('iniciar_ruta_db', (callback) => {
     const queryCrearRuta = 'INSERT INTO rutas (id_usuario, id_ruta_catalogo, fecha_inicio) VALUES (?, 1, NOW())';
     

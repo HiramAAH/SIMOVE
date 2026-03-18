@@ -1,11 +1,9 @@
-
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - Purificadora</title>
+  <title>SIMOVE - Purificadora</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
   <style>
@@ -14,51 +12,75 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      background: linear-gradient(135deg, #6CC0E5, #1C6EA4);
+      background: linear-gradient(135deg, #e0f7fa 0%, #0288d1 100%);
+      font-family: system-ui, -apple-system, sans-serif;
     }
     .login-card {
-      background-color: #fff;
-      padding: 2.5rem;
-      border-radius: 1rem;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 3rem 2rem;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.2);
       width: 100%;
       max-width: 400px;
       text-align: center;
+      backdrop-filter: blur(10px);
     }
     .login-card h1 {
-      color: #1C6EA4;
-      margin-bottom: 1.5rem;
+      color: #0277bd;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 2rem;
     }
-    .error {
-      color: red;
-      margin-top: 0.5rem;
-      font-size: 0.9rem;
+    .form-control {
+      border-radius: 10px;
+      padding: 12px 15px;
+      border: 1px solid #b3e5fc;
     }
+    .form-control:focus {
+      border-color: #0288d1;
+      box-shadow: 0 0 0 0.25rem rgba(2, 136, 209, 0.25);
+    }
+    .btn-login {
+      background-color: #0288d1;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-weight: bold;
+      font-size: 1.1rem;
+      transition: all 0.3s;
+    }
+    .btn-login:hover {
+      background-color: #01579b;
+      transform: translateY(-2px);
+    }
+    .error { color: #d32f2f; margin-top: 1rem; font-weight: 500; }
   </style>
 </head>
 <body>
 
   <div class="login-card">
-    <h1><i class="bi bi-droplet-half"></i> Purificadora El Manantial</h1>
+    <h1><i class="bi bi-droplet-fill text-info"></i> SIMOVE</h1>
+    <p class="text-muted mb-4">Sistema de Monitoreo de Rutas</p>
+    
     <div class="mb-3">
-      <input type="text" id="nombre_usuario" class="form-control" placeholder="Usuario">
+      <input type="text" id="nombre_usuario" class="form-control" placeholder="Nombre de Usuario">
     </div>
-    <div class="mb-3">
+    <div class="mb-4">
       <input type="password" id="password" class="form-control" placeholder="Contraseña">
     </div>
-    <button onclick="login()" class="btn btn-primary w-100"><i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión</button>
+    <button onclick="login()" class="btn btn-primary w-100 btn-login">
+      Iniciar Sesión <i class="bi bi-arrow-right-circle ms-2"></i>
+    </button>
     <div class="error" id="error"></div>
   </div>
 
   <script>
+    // Tu lógica original de login intacta
     document.addEventListener('DOMContentLoaded', () => {
       if (window.Capacitor && window.Capacitor.Plugins.App) {
         window.Capacitor.Plugins.App.addListener('backButton', ({ canGoBack }) => {
-          if (canGoBack) {
-            window.history.back();
-          } else {
-            window.Capacitor.Plugins.App.exitApp();
-          }
+          if (canGoBack) window.history.back();
+          else window.Capacitor.Plugins.App.exitApp();
         });
       }
     });
@@ -70,7 +92,6 @@
       errorDiv.textContent = '';
 
       try {
-        // En public/index.html busca la función login y déjala así:
         const respuesta = await fetch('https://simove.onrender.com/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -80,18 +101,15 @@
 
         if (data.success) {
           localStorage.setItem('usuario', JSON.stringify(data.user));
-          if (data.user.rol === 'admin') window.location.href = 'admin/dashboard.html';
-          else window.location.href = 'repartidor/dashboard.html';
+          if (data.user.rol === 'admin') window.location.href = 'admin/dashboard.html'; // Ajusta la ruta si usas carpetas
+          else window.location.href = 'repartidor/dashboard.html'; // Redirigir directo a la app del repartidor
         } else {
-          errorDiv.textContent = data.message || 'Usuario o contraseña incorrecta';
+          errorDiv.textContent = data.message || 'Credenciales incorrectas';
         }
       } catch (err) {
         errorDiv.textContent = 'Error de conexión con el servidor';
-        console.error(err);
       }
     }
   </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
