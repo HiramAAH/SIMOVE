@@ -187,6 +187,11 @@
     }
 
     startBtn.addEventListener('click', () => {
+
+      if ('Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission();
+      }
+      
       startBtn.disabled = true;
       statusText.textContent = 'Verificando con servidor...';
       
