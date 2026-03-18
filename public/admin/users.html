@@ -4,24 +4,47 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Usuarios - Admin</title>
+
+<script>
+  const userAuth = JSON.parse(localStorage.getItem('usuario'));
+  if (!userAuth || userAuth.rol !== 'admin') window.location.replace('index.html');
+</script>
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="text-primary"><i class="bi bi-people"></i> Gestión de Usuarios</h2>
-        <div>
-            <button class="btn btn-success" onclick="abrirModalNuevo()"><i class="bi bi-person-plus"></i> Agregar Usuario</button>
-            <a href="dashboard.html" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Regresar</a>
-        </div>
+<style>
+  body { background-color: #f4f8fb; font-family: system-ui, -apple-system, sans-serif; padding-bottom: 20px;}
+  .navbar-custom { background: linear-gradient(90deg, #0277bd 0%, #00acc1 100%); color: white; padding: 15px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px;}
+  
+  .card-custom { border-radius: 15px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+  .table-custom th { background-color: #f8f9fa; color: #0288d1; font-weight: 700; border-bottom: 2px solid #e0e0e0; }
+  .table-custom td { vertical-align: middle; }
+  
+  .modal-content { border-radius: 20px; border: none; }
+  .modal-header { border-top-left-radius: 20px; border-top-right-radius: 20px; background: linear-gradient(90deg, #0277bd, #00acc1); }
+</style>
+</head>
+<body>
+
+<div class="navbar-custom d-flex justify-content-between align-items-center">
+  <h5 class="m-0 fw-bold"><i class="bi bi-people"></i> Gestión de Usuarios</h5>
+  <button class="btn btn-sm btn-light rounded-pill fw-bold text-primary shadow-sm" onclick="window.location.href='dashboard.html'">
+    <i class="bi bi-arrow-left"></i> Panel
+  </button>
+</div>
+
+<div class="container">
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-info text-white fw-bold rounded-pill shadow-sm" onclick="abrirModalNuevo()">
+            <i class="bi bi-person-plus-fill"></i> Agregar Usuario
+        </button>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <table class="table table-hover text-center">
-                <thead class="table-primary">
+    <div class="card card-custom overflow-hidden">
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-hover table-custom text-center mb-0">
+                <thead>
                     <tr>
                         <th>ID</th>
                         <th>Nombre</th>
@@ -31,41 +54,41 @@
                     </tr>
                 </thead>
                 <tbody id="userTable">
-                    <tr><td colspan="5">Cargando usuarios desde la base de datos...</td></tr>
+                    <tr><td colspan="5" class="text-muted py-4"><div class="spinner-border text-info mb-2" role="status"></div><br>Cargando usuarios...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="userModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="modalTitle">Nuevo Usuario</h5>
+<div class="modal fade" id="userModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow">
+      <div class="modal-header text-white">
+        <h5 class="modal-title fw-bold" id="modalTitle">Nuevo Usuario</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body p-4">
         <input type="hidden" id="userId">
         <div class="mb-3">
-            <label>Nombre de Usuario</label>
+            <label class="form-label text-muted fw-bold small">Nombre de Usuario</label>
             <input type="text" id="nombre" class="form-control" placeholder="Ej: Juan Perez">
         </div>
         <div class="mb-3">
-            <label>Rol</label>
+            <label class="form-label text-muted fw-bold small">Rol del Sistema</label>
             <select id="rol" class="form-select">
                 <option value="repartidor">Repartidor</option>
                 <option value="admin">Administrador</option>
             </select>
         </div>
         <div class="mb-3">
-            <label>Contraseña</label>
-            <input type="text" id="password" class="form-control" placeholder="Contraseña">
+            <label class="form-label text-muted fw-bold small">Contraseña</label>
+            <input type="text" id="password" class="form-control" placeholder="Contraseña segura">
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+      <div class="modal-footer border-0 pb-4 pe-4">
+        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-info text-white fw-bold rounded-pill px-4" onclick="guardarUsuario()">Guardar</button>
       </div>
     </div>
   </div>
@@ -73,6 +96,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// AQUÍ VA TU LÓGICA DE JAVASCRIPT INTACTA
 const myModal = new bootstrap.Modal(document.getElementById('userModal'));
 const urlBase = 'https://simove.onrender.com/api/usuarios';
 
@@ -86,13 +110,13 @@ async function cargarUsuarios() {
         usuarios.forEach(user => {
             tbody.innerHTML += `
                 <tr>
-                    <td>${user.id_usuario}</td>
-                    <td><strong>${user.nombre_usuario}</strong></td>
-                    <td><span class="badge ${user.rol === 'admin' ? 'bg-danger' : 'bg-success'}">${user.rol.toUpperCase()}</span></td>
-                    <td>${user.password}</td>
+                    <td class="text-muted fw-semibold">#${user.id_usuario}</td>
+                    <td><strong class="text-dark">${user.nombre_usuario}</strong></td>
+                    <td><span class="badge ${user.rol === 'admin' ? 'bg-danger' : 'bg-info'} rounded-pill">${user.rol.toUpperCase()}</span></td>
+                    <td class="text-muted">${user.password}</td>
                     <td>
-                        <button class="btn btn-sm btn-warning" onclick="abrirModalEditar(${user.id_usuario}, '${user.nombre_usuario}', '${user.rol}', '${user.password}')"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-danger" onclick="eliminarUsuario(${user.id_usuario})"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-primary rounded-circle" onclick="abrirModalEditar(${user.id_usuario}, '${user.nombre_usuario}', '${user.rol}', '${user.password}')"><i class="bi bi-pencil-fill"></i></button>
+                        <button class="btn btn-sm btn-outline-danger rounded-circle ms-1" onclick="eliminarUsuario(${user.id_usuario})"><i class="bi bi-trash-fill"></i></button>
                     </td>
                 </tr>
             `;
