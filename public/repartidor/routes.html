@@ -143,9 +143,11 @@
       debugPanel.scrollTop = debugPanel.scrollHeight;
     }
 
+    let ultimaUbicacionEnviada = 0; // Control de tiempo para ahorrar datos
+
     async function iniciarTransmisionGPS() {
       if (window.Capacitor && window.Capacitor.Plugins.BackgroundGeolocation) {
-        logDebug("Activando GPS en Segundo Plano...", "yellow");
+        logDebug("Activando GPS Optimizado en Segundo Plano...", "yellow");
 
         window.Capacitor.Plugins.BackgroundGeolocation.addWatcher(
           {
@@ -153,34 +155,37 @@
             backgroundTitle: "Ruta Activa",
             requestPermissions: true,
             stale: false,
-            distanceFilter: 3 
+            distanceFilter: 15 // AUMENTADO: Solo detecta si se movió 15 metros
           },
           function callback(location, error) {
-            if (error) {
-              if (error.code === "NOT_AUTHORIZED") {
-                alert("Debes permitir la ubicación 'Todo el tiempo' para que funcione en segundo plano.");
-              }
-              return logDebug(`Error GPS: ${error.message}`, "red");
-            }
+            if (error) return logDebug(`Error GPS: ${error.message}`, "red");
 
-            logDebug(`Lat: ${location.latitude.toFixed(5)} | Lng: ${location.longitude.toFixed(5)}`);
-            socket.emit('nueva_ubicacion', { lat: location.latitude, lng: location.longitude, precision: location.accuracy });
+            const ahora = Date.now();
+            // FRENO: Solo enviamos a la base de datos si han pasado al menos 10 segundos desde el último envío
+            if (ahora - ultimaUbicacionEnviada > 10000) {
+              logDebug(`Enviando Lat: ${location.latitude.toFixed(5)}`);
+              socket.emit('nueva_ubicacion', { lat: location.latitude, lng: location.longitude, precision: location.accuracy });
+              ultimaUbicacionEnviada = ahora;
+            }
           }
         ).then(function(watcher_id) {
           watchId = watcher_id;
         });
 
       } else {
+        // Optimización para pruebas en navegador Web
         if ("geolocation" in navigator) {
           logDebug("Activando GPS Web...", "yellow");
           watchId = navigator.geolocation.watchPosition(
             (pos) => {
-              const { latitude, longitude, accuracy } = pos.coords;
-              logDebug(`Lat: ${latitude.toFixed(5)} | Lng: ${longitude.toFixed(5)}`); 
-              socket.emit('nueva_ubicacion', { lat: latitude, lng: longitude, precision: accuracy });
+              const ahora = Date.now();
+              if (ahora - ultimaUbicacionEnviada > 10000) { // Freno de 10 segundos
+                socket.emit('nueva_ubicacion', { lat: pos.coords.latitude, lng: pos.coords.longitude, precision: pos.coords.accuracy });
+                ultimaUbicacionEnviada = ahora;
+              }
             },
             (err) => { logDebug(`Error GPS: ${err.message}`, "red"); },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 } // maximumAge permite reusar la ubicación anterior por 5 segundos
           );
         }
       }

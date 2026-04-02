@@ -13,9 +13,10 @@ const PORT = process.env.PORT || 3000;
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
+  cors: { origin: "*", methods: ["GET", "POST"] },
+  pingInterval: 35000, // El servidor pregunta si el celular sigue ahí cada 35 segundos
+  pingTimeout: 60000   // Le da al celular 1 minuto entero para responder si entra a una zona sin señal
 });
-
 // 1. CREAMOS LA BASE DE DATOS PRIMERO
 const db = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
