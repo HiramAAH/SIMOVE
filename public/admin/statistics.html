@@ -54,7 +54,7 @@
             <div class="col-md-8">
                 <div class="card card-custom mb-4">
                     <div class="card-body">
-                        <h6 class="text-primary fw-bold mb-3"><i class="bi bi-pie-chart"></i> Rendimiento por Usuario</h6>
+                        <h6 class="text-primary fw-bold mb-3"><i class="bi bi-pie-chart"></i> Rendimiento por Repartidor</h6>
                         <canvas id="graficaVentas"></canvas>
                     </div>
                 </div>
@@ -67,7 +67,7 @@
                     <thead>
                         <tr>
                             <th>Fecha de Corte</th>
-                            <th>Usuario / Rol</th>
+                            <th>Repartidor</th>
                             <th>Garrafones</th>
                             <th>Ingreso (MXN)</th>
                         </tr>
@@ -80,6 +80,8 @@
 </div>
 
 <script>
+// AQUÍ VA TU LÓGICA DE JAVASCRIPT INTACTA
+const PRECIO = 15;
 let cortesGlobales = [];
 let chartInstance = null;
 
@@ -88,8 +90,7 @@ async function cargarDatos(mostrarTodos = false) {
     const contenido = document.getElementById("contenido-estadisticas");
     
     try {
-        // Uso de ruta relativa
-        const response = await fetch('/api/estadisticas');
+        const response = await fetch('https://simove.onrender.com/api/estadisticas');
         if (!response.ok) throw new Error("Fallo en la comunicación con el servidor.");
 
         cortesGlobales = await response.json();
@@ -146,28 +147,14 @@ function renderTabla(data) {
 
     let totalDinero = 0;
     data.forEach(corte => {
-        // Lógica de cálculo dinámico: Ventanilla $15, Repartidor $20
-        const precioUnitario = corte.rol === 'ventanilla' ? 15 : 20;
-        const total = corte.vendidos * precioUnitario;
+        const total = corte.vendidos * PRECIO;
         totalDinero += total;
-
-        // Estilos visuales para diferenciar el origen de la venta
-        const rolBadge = corte.rol === 'ventanilla' 
-            ? `<span class="badge bg-success" style="font-size: 0.7em;">Ventanilla</span>` 
-            : `<span class="badge bg-primary" style="font-size: 0.7em;">Repartidor</span>`;
-
         tbody.innerHTML += `
             <tr>
                 <td class="text-muted fw-semibold">${corte.fechaVista}</td>
-                <td>
-                    <strong class="text-dark">${corte.repartidor}</strong><br>
-                    ${rolBadge}
-                </td>
-                <td>
-                    <span class="badge bg-info rounded-pill text-white">${corte.vendidos}</span><br>
-                    <small class="text-muted">a $${precioUnitario}</small>
-                </td>
-                <td class="text-success fw-bold fs-6">$${total}.00</td>
+                <td><strong class="text-dark">${corte.repartidor}</strong></td>
+                <td><span class="badge bg-info rounded-pill text-white">${corte.vendidos}</span></td>
+                <td class="text-success fw-bold">$${total}.00</td>
             </tr>
         `;
     });

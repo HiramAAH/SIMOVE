@@ -93,7 +93,7 @@
 
       try {
         // RUTA RELATIVA: Funciona en local y en la nube
-        const respuesta = await fetch('/login', {
+        const respuesta = await fetch('https://simove.onrender.com/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nombre_usuario, password })
