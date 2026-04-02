@@ -4,9 +4,9 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const session = require('express-session');
-const authRoutes = require('./routes/auth');
 const mysql = require('mysql2'); 
 const cors = require('cors');
+const bcrypt = require('bcrypt');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,6 +16,7 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
+// 1. CREAMOS LA BASE DE DATOS PRIMERO
 const db = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -35,6 +36,9 @@ db.getConnection((err, connection) => {
     connection.release();
   }
 });
+
+// 2. AHORA SÍ PASAMOS LA BD A LAS RUTAS DE AUTH
+const authRoutes = require('./routes/auth')(db);
 
 app.use(cors()); 
 app.use(express.json());
@@ -73,7 +77,6 @@ io.on('connection', (socket) => {
   socket.on('verificar_estado_ruta', (callback) => {
     const ruta = rutasActivas[user.nombre_usuario];
     if (ruta) {
-      // Si la ruta existe en la memoria del servidor, le devolvemos los datos
       callback({ activa: true, ventas: ruta.ventas });
     } else {
       callback({ activa: false });
@@ -171,39 +174,78 @@ app.get('/api/mis-cortes', (req, res) => {
 // ==========================================
 // APIS PARA EL PANEL DE ADMINISTRADOR
 // ==========================================
-app.get('/api/usuarios', (req, res) => {
-  db.query('SELECT id_usuario, nombre_usuario, rol, password FROM usuarios', (err, results) => {
+
+// Middleware: Cadenero que verifica si es Administrador
+const verificarAdmin = (req, res, next) => {
+  const user = req.session?.user;
+  if (user && user.rol === 'admin') {
+    next(); 
+  } else {
+    res.status(403).json({ error: "Acceso denegado. Privilegios insuficientes." });
+  }
+};
+
+// Se inyecta 'verificarAdmin' en todas las rutas de este bloque
+app.get('/api/usuarios', verificarAdmin, (req, res) => {
+  // Nota: Eliminamos 'password' de la consulta GET para no enviar datos sensibles por internet
+  db.query('SELECT id_usuario, nombre_usuario, rol FROM usuarios', (err, results) => {
     if(err) return res.status(500).json({error: err.message});
     res.json(results);
   });
 });
 
-app.post('/api/usuarios', (req, res) => {
+app.post('/api/usuarios', verificarAdmin, async (req, res) => {
   const { nombre_usuario, rol, password } = req.body;
-  db.query('INSERT INTO usuarios (nombre_usuario, rol, password) VALUES (?, ?, ?)', [nombre_usuario, rol, password], (err, result) => {
-    if(err) return res.status(500).json({error: err.message});
-    res.json({ success: true, id_usuario: result.insertId });
-  });
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    db.query('INSERT INTO usuarios (nombre_usuario, rol, password) VALUES (?, ?, ?)', 
+      [nombre_usuario, rol, hashedPassword], 
+      (err, result) => {
+        if(err) return res.status(500).json({error: err.message});
+        res.json({ success: true, id_usuario: result.insertId });
+    });
+  } catch (error) {
+    console.error("Error encriptando contraseña:", error);
+    res.status(500).json({error: "Error interno de seguridad."});
+  }
 });
 
-app.put('/api/usuarios/:id', (req, res) => {
+app.put('/api/usuarios/:id', verificarAdmin, async (req, res) => {
   const { nombre_usuario, rol, password } = req.body;
-  db.query('UPDATE usuarios SET nombre_usuario=?, rol=?, password=? WHERE id_usuario=?', [nombre_usuario, rol, password, req.params.id], (err) => {
-    if(err) return res.status(500).json({error: err.message});
-    res.json({ success: true });
-  });
+  try {
+    let query = 'UPDATE usuarios SET nombre_usuario=?, rol=?';
+    let params = [nombre_usuario, rol];
+
+    if (password && password.trim() !== '') {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        query += ', password=?';
+        params.push(hashedPassword);
+    }
+
+    query += ' WHERE id_usuario=?';
+    params.push(req.params.id);
+
+    db.query(query, params, (err) => {
+      if(err) return res.status(500).json({error: err.message});
+      res.json({ success: true });
+    });
+  } catch (error) {
+    console.error("Error actualizando contraseña:", error);
+    res.status(500).json({error: "Error interno de seguridad."});
+  }
 });
 
-app.delete('/api/usuarios/:id', (req, res) => {
+app.delete('/api/usuarios/:id', verificarAdmin, (req, res) => {
   db.query('DELETE FROM usuarios WHERE id_usuario=?', [req.params.id], (err) => {
     if(err) return res.status(500).json({error: err.message});
     res.json({ success: true });
   });
 });
 
-app.get('/api/estadisticas', (req, res) => {
+app.get('/api/estadisticas', verificarAdmin, (req, res) => {
   const query = `
-    SELECT c.fecha, c.garrafones_vendidos as vendidos, u.nombre_usuario as repartidor
+    SELECT c.fecha, c.garrafones_vendidos as vendidos, u.nombre_usuario as repartidor, u.rol
     FROM cortes c
     JOIN usuarios u ON c.id_usuario = u.id_usuario
     ORDER BY c.fecha DESC
@@ -214,9 +256,9 @@ app.get('/api/estadisticas', (req, res) => {
   });
 });
 
-app.get('/api/historial/rutas', (req, res) => {
+app.get('/api/historial/rutas', verificarAdmin, (req, res) => {
   const query = `
-    SELECT r.id_ruta, r.fecha_inicio, u.nombre_usuario, COALESCE(c.garrafones_vendidos, 0) as ventas
+    SELECT r.id_ruta, r.fecha_inicio, u.nombre_usuario, u.rol, COALESCE(c.garrafones_vendidos, 0) as ventas
     FROM rutas r
     JOIN usuarios u ON r.id_usuario = u.id_usuario
     LEFT JOIN cortes c ON r.id_ruta = c.id_ruta
@@ -228,7 +270,7 @@ app.get('/api/historial/rutas', (req, res) => {
   });
 });
 
-app.get('/api/historial/coordenadas/:id_ruta', (req, res) => {
+app.get('/api/historial/coordenadas/:id_ruta', verificarAdmin, (req, res) => {
   db.query('SELECT latitud as lat, longitud as lng, timestamp FROM coordenadas WHERE id_ruta = ? ORDER BY timestamp ASC', [req.params.id_ruta], (err, results) => {
     if(err) return res.status(500).json({error: err.message});
     res.json(results);
@@ -237,4 +279,30 @@ app.get('/api/historial/coordenadas/:id_ruta', (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`\x1b[32mServidor corriendo en el puerto ${PORT}\x1b[0m`);
+});
+
+// ==========================================
+// API EXCLUSIVA PARA PUNTO DE VENTA (VENTANILLA)
+// ==========================================
+app.post('/api/ventanilla/venta', (req, res) => {
+  const { garrafones } = req.body;
+  const user = req.session?.user;
+  
+  if (!user || user.rol !== 'ventanilla') {
+    return res.status(401).json({ error: "No autorizado. Solo ventanilla." });
+  }
+
+  const queryRuta = 'INSERT INTO rutas (id_usuario, id_ruta_catalogo, fecha_inicio) VALUES (?, 1, NOW())';
+  
+  db.query(queryRuta, [user.id_usuario], (err, result) => {
+    if (err) return res.status(500).json({ error: "Error de BD en Ruta: " + err.message });
+    
+    const id_ruta_generada = result.insertId;
+    
+    const queryCorte = 'INSERT INTO cortes (id_usuario, id_ruta, fecha, garrafones_vendidos) VALUES (?, ?, CURDATE(), ?)';
+    db.query(queryCorte, [user.id_usuario, id_ruta_generada, garrafones], (errCorte) => {
+      if (errCorte) return res.status(500).json({ error: "Error de BD en Corte: " + errCorte.message });
+      res.json({ success: true });
+    });
+  });
 });

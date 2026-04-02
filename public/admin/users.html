@@ -70,22 +70,30 @@
       </div>
       <div class="modal-body p-4">
         <input type="hidden" id="userId">
+        
         <div class="mb-3">
             <label class="form-label text-muted fw-bold small">Nombre de Usuario</label>
             <input type="text" id="nombre" class="form-control" placeholder="Ej: Juan Perez">
         </div>
+        
         <div class="mb-3">
             <label class="form-label text-muted fw-bold small">Rol del Sistema</label>
             <select id="rol" class="form-select">
                 <option value="repartidor">Repartidor</option>
+                <option value="ventanilla">Ventanilla</option>
                 <option value="admin">Administrador</option>
             </select>
         </div>
+        
         <div class="mb-3">
             <label class="form-label text-muted fw-bold small">Contraseña</label>
-            <input type="text" id="password" class="form-control" placeholder="Contraseña segura">
+            <input type="text" id="password" class="form-control" placeholder="Escribe para cambiar contraseña">
+            <small id="passwordHelp" class="text-secondary mt-1 d-block" style="font-size: 0.8rem;">
+                Si lo dejas en blanco, la contraseña actual se mantendrá.
+            </small>
         </div>
       </div>
+      
       <div class="modal-footer border-0 pb-4 pe-4">
         <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-info text-white fw-bold rounded-pill px-4" onclick="guardarUsuario()">Guardar</button>
@@ -96,9 +104,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// AQUÍ VA TU LÓGICA DE JAVASCRIPT INTACTA
 const myModal = new bootstrap.Modal(document.getElementById('userModal'));
-const urlBase = 'https://simove.onrender.com/api/usuarios';
+// Uso de URL relativa para evitar problemas CORS entre Local y Render
+const urlBase = '/api/usuarios';
 
 async function cargarUsuarios() {
     try {
@@ -108,14 +116,20 @@ async function cargarUsuarios() {
         tbody.innerHTML = "";
         
         usuarios.forEach(user => {
+            // Asignación de colores por rol
+            let badgeColor = 'bg-secondary';
+            if(user.rol === 'admin') badgeColor = 'bg-danger';
+            if(user.rol === 'repartidor') badgeColor = 'bg-info';
+            if(user.rol === 'ventanilla') badgeColor = 'bg-success';
+
             tbody.innerHTML += `
                 <tr>
                     <td class="text-muted fw-semibold">#${user.id_usuario}</td>
                     <td><strong class="text-dark">${user.nombre_usuario}</strong></td>
-                    <td><span class="badge ${user.rol === 'admin' ? 'bg-danger' : 'bg-info'} rounded-pill">${user.rol.toUpperCase()}</span></td>
-                    <td class="text-muted">${user.password}</td>
+                    <td><span class="badge ${badgeColor} rounded-pill">${user.rol.toUpperCase()}</span></td>
+                    <td><span class="text-muted fw-bold fs-5" title="Encriptada">••••••••</span></td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary rounded-circle" onclick="abrirModalEditar(${user.id_usuario}, '${user.nombre_usuario}', '${user.rol}', '${user.password}')"><i class="bi bi-pencil-fill"></i></button>
+                        <button class="btn btn-sm btn-outline-primary rounded-circle" onclick="abrirModalEditar(${user.id_usuario}, '${user.nombre_usuario}', '${user.rol}')"><i class="bi bi-pencil-fill"></i></button>
                         <button class="btn btn-sm btn-outline-danger rounded-circle ms-1" onclick="eliminarUsuario(${user.id_usuario})"><i class="bi bi-trash-fill"></i></button>
                     </td>
                 </tr>
@@ -132,25 +146,36 @@ function abrirModalNuevo() {
     document.getElementById("nombre").value = "";
     document.getElementById("rol").value = "repartidor";
     document.getElementById("password").value = "";
+    document.getElementById("passwordHelp").style.display = "none"; // Ocultar mensaje en usuario nuevo
     myModal.show();
 }
 
-function abrirModalEditar(id, nombre, rol, password) {
+// Ya no pasamos la contraseña antigua como parámetro
+function abrirModalEditar(id, nombre, rol) {
     document.getElementById("modalTitle").textContent = "Editar Usuario";
     document.getElementById("userId").value = id;
     document.getElementById("nombre").value = nombre;
     document.getElementById("rol").value = rol;
-    document.getElementById("password").value = password;
+    document.getElementById("password").value = ""; // Siempre en blanco por seguridad
+    document.getElementById("passwordHelp").style.display = "block"; // Mostrar mensaje
     myModal.show();
 }
 
 async function guardarUsuario() {
     const id = document.getElementById("userId").value;
+    const password = document.getElementById("password").value;
+    
     const data = {
         nombre_usuario: document.getElementById("nombre").value,
         rol: document.getElementById("rol").value,
-        password: document.getElementById("password").value
+        password: password
     };
+
+    // Validar que un usuario nuevo forzosamente tenga contraseña
+    if(!id && password.trim() === '') {
+        alert("Un usuario nuevo necesita una contraseña.");
+        return;
+    }
 
     const method = id ? 'PUT' : 'POST';
     const url = id ? `${urlBase}/${id}` : urlBase;

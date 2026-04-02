@@ -92,7 +92,8 @@
       errorDiv.textContent = '';
 
       try {
-        const respuesta = await fetch('https://simove.onrender.com/login', {
+        // RUTA RELATIVA: Funciona en local y en la nube
+        const respuesta = await fetch('/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nombre_usuario, password })
@@ -101,8 +102,11 @@
 
         if (data.success) {
           localStorage.setItem('usuario', JSON.stringify(data.user));
-          if (data.user.rol === 'admin') window.location.href = 'admin/dashboard.html'; // Ajusta la ruta si usas carpetas
-          else window.location.href = 'repartidor/dashboard.html'; // Redirigir directo a la app del repartidor
+          
+          // OJO: Estas rutas asumen que sigues teniendo carpetas admin/, repartidor/, ventanilla/
+          if (data.user.rol === 'admin') window.location.href = 'admin/dashboard.html';
+          else if (data.user.rol === 'repartidor') window.location.href = 'repartidor/dashboard.html'; 
+          else if (data.user.rol === 'ventanilla') window.location.href = 'ventanilla/dashboard.html'; 
         } else {
           errorDiv.textContent = data.message || 'Credenciales incorrectas';
         }
