@@ -1,5 +1,11 @@
+# Archivos de entorno y módulos
 node_modules/
 .env
-package-lock.json
-db/simove.db
-mykey.jks
+
+# Archivos de firma de Android
+*.jks
+*.keystore
+
+# Carpetas de compilación
+android/
+public/
