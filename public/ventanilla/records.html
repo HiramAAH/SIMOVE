@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Cortes - Ventanilla</title>
+  
+  <script>
+    const userAuth = JSON.parse(localStorage.getItem('usuario'));
+    if (!userAuth || userAuth.rol !== 'ventanilla') window.location.replace('index.html');
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    body { background-color: #f4f8fb; font-family: system-ui, -apple-system, sans-serif; padding-bottom: 20px;}
+    .navbar-custom { background: linear-gradient(90deg, #00897b 0%, #26a69a 100%); padding: 15px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; color: white;}
+    .card-custom { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    .table-custom th { background-color: #e0f2f1; color: #00695c; border-bottom: none; }
+    .money-text { color: #2e7d32; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div class="navbar-custom d-flex justify-content-between align-items-center shadow-sm">
+    <h5 class="m-0 fw-bold"><i class="bi bi-receipt"></i> Historial de Cortes</h5>
+    <button class="btn btn-sm btn-light rounded-pill fw-bold text-success" onclick="window.location.href='dashboard.html'">
+      <i class="bi bi-arrow-left"></i> Volver
+    </button>
+  </div>
+
+  <div class="container mt-4">
+    <div class="card card-custom overflow-hidden">
+      <div class="card-body p-0 table-responsive">
+        <table class="table table-hover table-custom text-center mb-0">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Garrafones</th>
+              <th>Ingreso Total</th>
+            </tr>
+          </thead>
+          <tbody id="tablaCortes">
+            <tr><td colspan="3" class="text-muted py-4">Cargando cortes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PRECIO_FIJO = 15;
+
+    async function cargarCortes() {
+      try {
+        // Ruta relativa segura
+        const response = await fetch(`/api/mis-cortes?id_usuario=${userAuth.id_usuario}`);
+        const cortes = await response.json();
+        
+        const tbody = document.getElementById("tablaCortes");
+        tbody.innerHTML = "";
+
+        if (cortes.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="3" class="text-muted py-4">No tienes cortes registrados aún.</td></tr>`;
+          return;
+        }
+
+        cortes.forEach(corte => {
+          const fechaFormateada = new Date(corte.fecha).toLocaleDateString('es-MX', { 
+            year: 'numeric', month: 'long', day: 'numeric' 
+          });
+          const totalDinero = corte.garrafones_vendidos * PRECIO_FIJO;
+
+          tbody.innerHTML += `
+            <tr>
+              <td class="text-muted fw-semibold">${fechaFormateada}</td>
+              <td><span class="badge bg-success rounded-pill px-3">${corte.garrafones_vendidos}</span></td>
+              <td class="money-text">$${totalDinero.toFixed(2)} MXN</td>
+            </tr>
+          `;
+        });
+      } catch (error) {
+        document.getElementById("tablaCortes").innerHTML = `<tr><td colspan="3" class="text-danger py-4">Error conectando con el servidor.</td></tr>`;
+      }
+    }
+
+    window.onload = cargarCortes;
+  </script>
+</body>
+</html>

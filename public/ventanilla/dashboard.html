@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Ventanilla</title>
+
+  <script>
+    const userAuth = JSON.parse(localStorage.getItem('usuario'));
+    // Corrección de ruta: apunta directo a index.html en la misma carpeta
+    if (!userAuth || userAuth.rol !== 'ventanilla') window.location.replace('index.html');
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    body { background:#f4f8fb; font-family:system-ui,-apple-system,sans-serif; }
+    .navbar-custom { background:linear-gradient(90deg,#00897b,#26a69a); padding:15px; border-bottom-left-radius:20px; border-bottom-right-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,.1); margin-bottom:30px; }
+    .welcome-header { color:#00695c; font-weight:800; margin-top:1.5rem; }
+    a { text-decoration:none; }
+    .dashboard-card { border:none; border-radius:20px; transition:all .3s; color:#fff; overflow:hidden; }
+    .dashboard-card:hover { transform:translateY(-8px); box-shadow:0 15px 25px rgba(0,0,0,.15); }
+    .card-icon { font-size:3.5rem; margin-bottom:10px; opacity:.9; }
+    .bg-sales   { background:linear-gradient(135deg,#80cbc4,#00897b); }
+    .bg-records { background:linear-gradient(135deg,#4db6ac,#00695c); }
+    .badge-rol { background:rgba(255,255,255,.25); color:#fff; font-size:.75rem; padding:3px 10px; border-radius:20px; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-dark navbar-custom shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold" href="#"><i class="bi bi-shop"></i> SIMOVE · Ventanilla</a>
+      <button class="btn btn-outline-light btn-sm fw-bold rounded-pill" onclick="cerrarSesion()">
+        <i class="bi bi-box-arrow-right"></i> Salir
+      </button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="row">
+      <div class="col-12 text-center text-md-start">
+        <h2 class="welcome-header">
+          Hola, <span id="nombreUser"></span> <i class="bi bi-hand-wave text-warning"></i>
+          <span class="badge-rol ms-2">Ventanilla</span>
+        </h2>
+        <p class="text-muted">¿Qué deseas hacer hoy?</p>
+      </div>
+    </div>
+
+    <div class="row mt-2 g-4 justify-content-center justify-content-md-start">
+      <div class="col-6 col-md-4">
+        <a href="sales.html">
+          <div class="card dashboard-card bg-sales h-100 p-4 text-center">
+            <i class="bi bi-cash-coin card-icon"></i>
+            <h5 class="fw-bold m-0">Mis Ventas</h5>
+            <small class="opacity-75 mt-1">$15 por garrafón</small>
+          </div>
+        </a>
+      </div>
+      <div class="col-6 col-md-4">
+        <a href="records.html">
+          <div class="card dashboard-card bg-records h-100 p-4 text-center">
+            <i class="bi bi-receipt card-icon"></i>
+            <h5 class="fw-bold m-0">Mis Cortes</h5>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('nombreUser').textContent = userAuth.nombre_usuario;
+    async function cerrarSesion() {
+      // Corrección a ruta relativa
+      await fetch('/logout', { method: 'POST' });
+      localStorage.removeItem('usuario');
+      window.location.replace('../index.html');
+    }
+  </script>
+</body>
+</html>

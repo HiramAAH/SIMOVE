@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ruta - Repartidor</title>
+
+  <script>
+    const userAuth = JSON.parse(localStorage.getItem('usuario'));
+    if (!userAuth || userAuth.rol !== 'repartidor') {
+      window.location.replace('index.html'); // Expulsar
+    }
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    body { background-color: #f4f8fb; font-family: system-ui, -apple-system, sans-serif; padding-bottom: 20px;}
+    .navbar-custom { background: linear-gradient(90deg, #0288d1 0%, #29b6f6 100%); color: white; padding: 15px; text-align: center; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;}
+    
+    .status-card { background: white; border-radius: 15px; padding: 20px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; border: 2px solid transparent; transition: all 0.3s ease;}
+    .status-card.en-ruta { border-color: #4caf50; background-color: #f1f8e9; }
+    
+    .ventas-number { font-size: 3rem; font-weight: 800; color: #0288d1; line-height: 1; margin: 10px 0;}
+    
+    .action-btn { border-radius: 15px; padding: 15px; font-size: 1.1rem; font-weight: bold; width: 100%; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.2s;}
+    .action-btn:active { transform: scale(0.95); }
+    
+    /* Panel de Debug oculto por defecto */
+    #debug-panel { display: none; background: #1e1e1e; color: #4caf50; font-family: monospace; font-size: 11px; padding: 15px; border-radius: 15px; height: 120px; overflow-y: auto; margin-top: 10px;}
+
+    /* Modal Styling */
+    .modal-content { border-radius: 20px; border: none; text-align: center; padding: 20px;}
+    .modal-content input { font-size: 2rem; text-align: center; font-weight: bold; color: #0288d1; border-radius: 15px;}
+  </style>
+</head>
+<body>
+
+  <div class="navbar-custom">
+    <h4 class="m-0 fw-bold"><i class="bi bi-truck"></i> Mi Ruta</h4>
+    <div id="nombre-repartidor" class="small opacity-75"></div>
+  </div>
+
+  <div class="container">
+    <div class="status-card" id="statusCard">
+      <h6 class="text-muted fw-bold text-uppercase mb-1" id="statusText">Ruta Inactiva</h6>
+      <div class="ventas-number" id="ventas">0</div>
+      <div class="text-muted small">Garrafones Vendidos</div>
+    </div>
+
+    <button id="startRoute" class="btn btn-primary action-btn shadow-sm">
+      <i class="bi bi-play-circle-fill fs-4"></i> Iniciar Ruta
+    </button>
+    
+    <button id="reabastecer" class="btn btn-info action-btn shadow-sm text-white" disabled>
+      <i class="bi bi-plus-circle-fill fs-4"></i> Registrar Venta
+    </button>
+    
+    <button id="endTurn" class="btn btn-danger action-btn shadow-sm" disabled>
+      <i class="bi bi-stop-circle-fill fs-4"></i> Terminar Turno
+    </button>
+
+    <div class="d-flex justify-content-between mt-4">
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.location.href='records.html'"><i class="bi bi-receipt"></i> Mis Cortes</button>
+        <button class="btn btn-outline-danger btn-sm" onclick="window.location.href='dashboard.html'"><i class="bi bi-box-arrow-right"></i> Regresar al panel</button>
+    </div>
+
+    <div id="debug-panel" class="mt-4 shadow-sm">> Sistema SIMOVE Listo...<br></div>
+  </div>
+
+  <div class="modal fade" id="modalReabastecer" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow">
+        <h4 class="fw-bold text-primary mb-3">Nueva Venta</h4>
+        <p class="text-muted">¿Cuántos garrafones entregaste en este punto?</p>
+        <input type="number" id="inputGarrafones" class="form-control form-control-lg mb-4" min="1" placeholder="0">
+        <div class="d-flex gap-2">
+            <button class="btn btn-secondary w-50 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+            <button class="btn btn-primary w-50 rounded-pill fw-bold" id="guardarVenta">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://simove.onrender.com/socket.io/socket.io.js"></script>
+
+  <script>
+    document.getElementById('nombre-repartidor').innerText = userAuth.nombre_usuario;
+    const bsModal = new bootstrap.Modal(document.getElementById('modalReabastecer'));
+
+    function cerrarSesion() {
+      localStorage.removeItem('usuario');
+      window.location.replace('index.html');
+    }
+
+    const socket = io('https://simove.onrender.com', {
+      query: { id_usuario: userAuth.id_usuario, nombre_usuario: userAuth.nombre_usuario, rol: userAuth.rol }
+    });
+
+    let rutaActiva = false;
+    let totalGarrafones = 0;
+    let watchId = null; 
+
+    const statusCard = document.getElementById('statusCard');
+    const statusText = document.getElementById('statusText');
+    const ventasDiv = document.getElementById('ventas');
+    const startBtn = document.getElementById('startRoute');
+    const reabastecerBtn = document.getElementById('reabastecer');
+    const endBtn = document.getElementById('endTurn');
+    const debugPanel = document.getElementById('debug-panel');
+    const inputGarrafones = document.getElementById('inputGarrafones');
+
+    socket.emit('verificar_estado_ruta', (estado) => {
+      if (estado && estado.activa) {
+        // Restaurar variables internas
+        rutaActiva = true;
+        totalGarrafones = estado.ventas;
+        
+        // Restaurar la Interfaz Visual (UI)
+        statusCard.classList.add('en-ruta');
+        statusText.innerHTML = '<i class="bi bi-circle-fill text-success"></i> EN RUTA';
+        statusText.classList.remove('text-muted');
+        statusText.classList.add('text-success');
+        ventasDiv.textContent = totalGarrafones;
+        
+        // Bloquear/Desbloquear Botones
+        startBtn.disabled = true;
+        reabastecerBtn.disabled = false;
+        endBtn.disabled = false;
+        
+        logDebug("Sesión recuperada: Ruta en curso", "yellow");
+        
+        // Volver a encender el GPS que se apagó al cambiar de pestaña
+        iniciarTransmisionGPS(); 
+      }
+    });
+
+    // Función de Debugging (Sigue existiendo por si cambias el CSS a display:block)
+    function logDebug(msg, color = "#4caf50") {
+      debugPanel.innerHTML += `<span style="color:${color}">> ${msg}</span><br>`;
+      debugPanel.scrollTop = debugPanel.scrollHeight;
+    }
+
+    let ultimaUbicacionEnviada = 0; // Control de tiempo para ahorrar datos
+
+    async function iniciarTransmisionGPS() {
+      if (window.Capacitor && window.Capacitor.Plugins.BackgroundGeolocation) {
+        logDebug("Activando GPS Optimizado en Segundo Plano...", "yellow");
+
+        window.Capacitor.Plugins.BackgroundGeolocation.addWatcher(
+          {
+            backgroundMessage: "SIMOVE está monitoreando tu ruta.",
+            backgroundTitle: "Ruta Activa",
+            requestPermissions: true,
+            stale: false,
+            distanceFilter: 15 // AUMENTADO: Solo detecta si se movió 15 metros
+          },
+          function callback(location, error) {
+            if (error) return logDebug(`Error GPS: ${error.message}`, "red");
+
+            const ahora = Date.now();
+            // FRENO: Solo enviamos a la base de datos si han pasado al menos 10 segundos desde el último envío
+            if (ahora - ultimaUbicacionEnviada > 10000) {
+              logDebug(`Enviando Lat: ${location.latitude.toFixed(5)}`);
+              socket.emit('nueva_ubicacion', { lat: location.latitude, lng: location.longitude, precision: location.accuracy });
+              ultimaUbicacionEnviada = ahora;
+            }
+          }
+        ).then(function(watcher_id) {
+          watchId = watcher_id;
+        });
+
+      } else {
+        // Optimización para pruebas en navegador Web
+        if ("geolocation" in navigator) {
+          logDebug("Activando GPS Web...", "yellow");
+          watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+              const ahora = Date.now();
+              if (ahora - ultimaUbicacionEnviada > 10000) { // Freno de 10 segundos
+                socket.emit('nueva_ubicacion', { lat: pos.coords.latitude, lng: pos.coords.longitude, precision: pos.coords.accuracy });
+                ultimaUbicacionEnviada = ahora;
+              }
+            },
+            (err) => { logDebug(`Error GPS: ${err.message}`, "red"); },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 } // maximumAge permite reusar la ubicación anterior por 5 segundos
+          );
+        }
+      }
+    }
+
+    startBtn.addEventListener('click', () => {
+
+      if ('Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission();
+      }
+      
+      startBtn.disabled = true;
+      statusText.textContent = 'Verificando con servidor...';
+      
+      socket.timeout(5000).emit('iniciar_ruta_db', (err, respuesta) => {
+        if (err) {
+          alert("Error de Red: El servidor no logró conectar con la Base de Datos.");
+          startBtn.disabled = false;
+          statusText.textContent = 'Ruta Inactiva';
+          return;
+        }
+
+        if (respuesta && respuesta.exito) {
+          rutaActiva = true;
+          statusCard.classList.add('en-ruta');
+          statusText.innerHTML = '<i class="bi bi-circle-fill text-success"></i> EN RUTA';
+          statusText.classList.remove('text-muted');
+          statusText.classList.add('text-success');
+          reabastecerBtn.disabled = false;
+          endBtn.disabled = false;
+          
+          iniciarTransmisionGPS();
+        } else {
+          alert("Error: " + (respuesta ? respuesta.error : "Desconocido"));
+          startBtn.disabled = false;
+          statusText.textContent = 'Ruta Inactiva';
+        }
+      });
+    });
+
+    reabastecerBtn.addEventListener('click', () => {
+      if (!rutaActiva) return;
+      inputGarrafones.value = '';
+      bsModal.show();
+      setTimeout(() => inputGarrafones.focus(), 500);
+    });
+
+    document.getElementById('guardarVenta').addEventListener('click', () => {
+      const vendidos = parseInt(inputGarrafones.value);
+      if (!isNaN(vendidos) && vendidos > 0) {
+        totalGarrafones += vendidos;
+        ventasDiv.textContent = totalGarrafones;
+        bsModal.hide();
+        logDebug(`Venta registrada: +${vendidos}`, "#00bcd4");
+        
+        socket.emit('venta_registrada', { total: totalGarrafones });
+        
+      } else {
+        alert('Ingresa un número válido.');
+      }
+    });
+
+    endBtn.addEventListener('click', () => {
+      const confirmacion = confirm(`¿Estás seguro de terminar tu turno?\n\nHas reportado un total de ${totalGarrafones} garrafones vendidos.`);
+      
+      if (confirmacion) {
+        if (watchId) {
+          if (window.Capacitor && window.Capacitor.Plugins.BackgroundGeolocation) {
+            window.Capacitor.Plugins.BackgroundGeolocation.removeWatcher({ id: watchId });
+          } else {
+            navigator.geolocation.clearWatch(watchId);
+          }
+        }
+        rutaActiva = false;
+        logDebug("Guardando datos en el servidor...", "yellow");
+        
+        socket.emit('finalizar_ruta_db', { total_vendidos: totalGarrafones }, (respuesta) => {
+          if (respuesta && respuesta.exito) {
+            alert("Tu reporte se ha guardado exitosamente.");
+            window.location.reload(); // Recarga limpia de la página
+          } else {
+            alert("Hubo un error al guardar: " + (respuesta ? respuesta.error : "Desconocido"));
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

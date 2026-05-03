@@ -1,3 +1,10 @@
+# Archivos de entorno y módulos
 node_modules/
 .env
-package-lock.json
+
+# Archivos de firma de Android
+*.jks
+*.keystore
+
+# Carpetas de compilación
+

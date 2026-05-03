@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Punto de Venta - Ventanilla</title>
+  
+  <script>
+    const userAuth = JSON.parse(localStorage.getItem('usuario'));
+    if (!userAuth || userAuth.rol !== 'ventanilla') window.location.replace('../index.html');
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  
+  <script src="https://simove.onrender.com/socket.io/socket.io.js"></script>
+
+  <style>
+    body { background-color: #f4f8fb; font-family: system-ui, -apple-system, sans-serif; padding-bottom: 30px;}
+    .navbar-custom { background: linear-gradient(90deg, #00897b 0%, #26a69a 100%); padding: 15px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; color: white;}
+    .pos-card { border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 30px; margin-top: 20px; background: white; text-align: center;}
+    .input-garrafones { font-size: 3rem; text-align: center; font-weight: bold; color: #00695c; border: 2px solid #b2dfdb; border-radius: 15px;}
+    .total-display { font-size: 2.5rem; font-weight: 900; color: #2e7d32; margin: 20px 0;}
+    .btn-cobrar { background: #00897b; color: white; font-size: 1.5rem; font-weight: bold; border-radius: 15px; padding: 15px; width: 100%; transition: 0.2s;}
+    .btn-cobrar:active { transform: scale(0.95); }
+    .status-badge { background: #e0f2f1; color: #00695c; padding: 8px 15px; border-radius: 20px; font-weight: bold; display: inline-block; margin-bottom: 15px;}
+  </style>
+</head>
+<body>
+
+  <div class="navbar-custom d-flex justify-content-between align-items-center shadow-sm">
+    <h5 class="m-0 fw-bold"><i class="bi bi-shop"></i> Mostrador</h5>
+    <button class="btn btn-sm btn-light rounded-pill fw-bold text-success" onclick="window.location.href='dashboard.html'">
+      <i class="bi bi-arrow-left"></i> Volver
+    </button>
+  </div>
+
+  <div class="container">
+    <div class="pos-card">
+      <div class="status-badge">
+        <i class="bi bi-broadcast text-success" id="indicadorConexion"></i> Turno Activo: <span id="acumuladoDia">0</span> garrafones
+      </div>
+
+      <h5 class="text-muted mb-3">Venta Actual:</h5>
+      
+      <input type="number" id="cantidad" class="form-control input-garrafones mb-3" placeholder="0" min="1" oninput="calcularTotal()">
+      
+      <div class="text-muted">Total a cobrar (15 MXN c/u):</div>
+      <div class="total-display" id="totalMXN">$0.00</div>
+
+      <button id="btnCobrar" class="btn btn-cobrar shadow-sm mb-4" onclick="registrarVenta()" disabled>
+        <i class="bi bi-plus-circle"></i> Sumar a la cuenta
+      </button>
+
+      <hr>
+
+      <button class="btn btn-danger w-100 rounded-pill fw-bold mt-2" onclick="cerrarCaja()">
+        <i class="bi bi-box-arrow-down"></i> Cerrar Caja (Guardar Corte)
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const precio = 15;
+    let garrafonesAcumulados = 0;
+    let watchId = null;
+    
+    // CORRECCIÓN 2: Conexión estricta a Render igual que en routes.html
+    const socket = io('https://simove.onrender.com', {
+      query: { nombre_usuario: userAuth.nombre_usuario, rol: userAuth.rol, id_usuario: userAuth.id_usuario }
+    });
+
+    socket.on('connect', () => {
+      document.getElementById('indicadorConexion').classList.add('text-success');
+      document.getElementById('indicadorConexion').classList.remove('text-danger');
+      
+      socket.emit('verificar_estado_ruta', (estado) => {
+        if (estado && estado.activa) {
+          garrafonesAcumulados = estado.ventas || 0;
+          document.getElementById('acumuladoDia').textContent = garrafonesAcumulados;
+          iniciarGPS();
+        } else {
+          // Si no hay ruta, pedimos al servidor iniciarla
+          socket.timeout(5000).emit('iniciar_ruta_db', (err, respuesta) => {
+            if(respuesta && respuesta.exito) {
+                iniciarGPS();
+            }
+          });
+        }
+      });
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('indicadorConexion').classList.remove('text-success');
+      document.getElementById('indicadorConexion').classList.add('text-danger');
+    });
+
+    // CORRECCIÓN 3: Lógica de GPS idéntica a routes.html (Alta precisión y manejo de errores)
+    function iniciarGPS() {
+      if ("geolocation" in navigator) {
+        watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude, longitude, accuracy } = pos.coords;
+            socket.emit('nueva_ubicacion', { lat: latitude, lng: longitude, precision: accuracy });
+          },
+          (err) => {
+            console.warn('GPS desactivado o denegado.', err);
+            // Si el navegador bloquea la ubicación, lanzamos una alerta para que el usuario sepa por qué no aparece
+            alert("Para aparecer en el mapa del administrador, permite el acceso a tu ubicación en esta página.");
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      }
+    }
+
+    function calcularTotal() {
+      const cantidad = parseInt(document.getElementById('cantidad').value) || 0;
+      const totalDiv = document.getElementById('totalMXN');
+      const btnCobrar = document.getElementById('btnCobrar');
+
+      if (cantidad > 0) {
+        totalDiv.textContent = `$${cantidad * precio}.00`;
+        btnCobrar.disabled = false;
+      } else {
+        totalDiv.textContent = `$0.00`;
+        btnCobrar.disabled = true;
+      }
+    }
+
+    function registrarVenta() {
+      const cantidad = parseInt(document.getElementById('cantidad').value);
+      garrafonesAcumulados += cantidad;
+      
+      document.getElementById('acumuladoDia').textContent = garrafonesAcumulados;
+      
+      // Emitimos al mapa general
+      socket.emit('venta_registrada', { total: garrafonesAcumulados });
+
+      document.getElementById('cantidad').value = '';
+      calcularTotal();
+    }
+
+    function cerrarCaja() {
+      if(garrafonesAcumulados === 0) {
+        alert("No has registrado ventas para guardar el corte.");
+        return;
+      }
+
+      if(confirm(`¿Estás seguro de cerrar la caja con ${garrafonesAcumulados} garrafones vendidos?`)) {
+        if (watchId) navigator.geolocation.clearWatch(watchId);
+
+        socket.emit('finalizar_ruta_db', { total_vendidos: garrafonesAcumulados }, (res) => {
+          if(res && res.exito) {
+            alert("Corte guardado exitosamente en la Base de Datos.");
+            window.location.replace('dashboard.html');
+          } else {
+            alert("Error del servidor: " + (res ? res.error : "Desconocido"));
+          }
+        });
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estadísticas - Admin</title>
+
+<script>
+  const userAuth = JSON.parse(localStorage.getItem('usuario'));
+  if (!userAuth || userAuth.rol !== 'admin') window.location.replace('index.html');
+</script>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  body { background-color: #f4f8fb; font-family: system-ui, -apple-system, sans-serif; padding-bottom: 20px;}
+  .navbar-custom { background: linear-gradient(90deg, #0277bd 0%, #00acc1 100%); color: white; padding: 15px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px;}
+  
+  .card-custom { border-radius: 15px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+  .table-custom th { background-color: #f8f9fa; color: #0288d1; font-weight: 700; border-bottom: 2px solid #e0e0e0; }
+  .table-custom td { vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<div class="navbar-custom d-flex justify-content-between align-items-center">
+  <h5 class="m-0 fw-bold"><i class="bi bi-bar-chart-fill"></i> Estadísticas Generales</h5>
+  <button class="btn btn-sm btn-light rounded-pill fw-bold text-primary shadow-sm" onclick="window.location.href='dashboard.html'">
+    <i class="bi bi-arrow-left"></i> Panel
+  </button>
+</div>
+
+<div class="container">
+    <div id="mensaje-estado" class="text-center text-muted mt-5">
+        <div class="spinner-border text-info mb-3" role="status"></div>
+        <h5>Analizando datos financieros...</h5>
+    </div>
+
+    <div id="contenido-estadisticas" style="display: none;">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card card-custom mb-4">
+                    <div class="card-body">
+                        <h6 class="text-primary fw-bold mb-3"><i class="bi bi-calendar-event"></i> Filtro de Tiempo</h6>
+                        <input type="date" id="filtroDia" class="form-control mb-3">
+                        <button class="btn btn-info text-white fw-bold w-100 mb-2 rounded-pill shadow-sm" onclick="filtrarPorDia()">Consultar Día</button>
+                        <button class="btn btn-outline-secondary w-100 rounded-pill" onclick="cargarDatos(true)">Mostrar Histórico Completo</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card card-custom mb-4">
+                    <div class="card-body">
+                        <h6 class="text-primary fw-bold mb-3"><i class="bi bi-pie-chart"></i> Rendimiento por Repartidor</h6>
+                        <canvas id="graficaVentas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-custom overflow-hidden">
+            <div class="card-body p-0 table-responsive">
+                <table class="table table-hover table-custom text-center mb-0" id="tablaEstadisticas">
+                    <thead>
+                        <tr>
+                            <th>Fecha de Corte</th>
+                            <th>Repartidor</th>
+                            <th>Garrafones</th>
+                            <th>Ingreso (MXN)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaCortes"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// AQUÍ VA TU LÓGICA DE JAVASCRIPT INTACTA
+const PRECIO = 15;
+let cortesGlobales = [];
+let chartInstance = null;
+
+async function cargarDatos(mostrarTodos = false) {
+    const mensaje = document.getElementById("mensaje-estado");
+    const contenido = document.getElementById("contenido-estadisticas");
+    
+    try {
+        const response = await fetch('https://simove.onrender.com/api/estadisticas');
+        if (!response.ok) throw new Error("Fallo en la comunicación con el servidor.");
+
+        cortesGlobales = await response.json();
+        
+        cortesGlobales = cortesGlobales.map(c => {
+            // c.fecha viene del servidor en formato "YYYY-MM-DD" (ejemplo: "2026-05-02")
+            // Lo separamos usando split para no crear un objeto Date
+            const partes = c.fecha.split('-'); 
+            const yyyy = partes[0];
+            const mm = partes[1];
+            const dd = partes[2];
+            
+            return {
+                ...c,
+                fechaFiltro: `${yyyy}-${mm}-${dd}`, // "2026-05-02"
+                fechaVista: `${dd}/${mm}/${yyyy}`    // "02/05/2026" (Formato visual)
+            };
+        });
+
+        mensaje.style.display = "none";
+        contenido.style.display = "block";
+
+        if (mostrarTodos) {
+            document.getElementById('filtroDia').value = '';
+            renderTabla(cortesGlobales);
+            generarGrafica(cortesGlobales);
+        } else {
+            const hoy = new Date();
+            const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+            document.getElementById('filtroDia').value = fechaHoy;
+            filtrarPorDia();
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        mensaje.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-danger fs-1 mb-3"></i><h5 class="text-danger">${error.message}</h5>`;
+    }
+}
+
+function filtrarPorDia() {
+    const fecha = document.getElementById("filtroDia").value;
+    if(!fecha) return;
+
+    const filtrados = cortesGlobales.filter(c => c.fechaFiltro === fecha);
+    renderTabla(filtrados);
+    generarGrafica(filtrados);
+}
+
+function renderTabla(data) {
+    const tbody = document.getElementById("tablaCortes");
+    tbody.innerHTML = "";
+    
+    if(data.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='4' class='text-muted py-4'>No hay ventas registradas en este periodo.</td></tr>";
+        return;
+    }
+
+    let totalDinero = 0;
+    data.forEach(corte => {
+        const total = corte.vendidos * PRECIO;
+        totalDinero += total;
+        tbody.innerHTML += `
+            <tr>
+                <td class="text-muted fw-semibold">${corte.fechaVista}</td>
+                <td><strong class="text-dark">${corte.repartidor}</strong></td>
+                <td><span class="badge bg-info rounded-pill text-white">${corte.vendidos}</span></td>
+                <td class="text-success fw-bold">$${total}.00</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML += `
+        <tr style="background-color: #e1f5fe;">
+            <td colspan="3" class="text-end fw-bold text-primary">TOTAL RECAUDADO:</td>
+            <td class="text-success fw-bold fs-5">$${totalDinero}.00</td>
+        </tr>
+    `;
+}
+
+function generarGrafica(data) {
+    const ventasPorRepartidor = {};
+    data.forEach(c => {
+        ventasPorRepartidor[c.repartidor] = (ventasPorRepartidor[c.repartidor] || 0) + c.vendidos;
+    });
+
+    const etiquetas = Object.keys(ventasPorRepartidor);
+    const valores = Object.values(ventasPorRepartidor);
+
+    if (chartInstance) chartInstance.destroy();
+
+    const ctx = document.getElementById("graficaVentas").getContext("2d");
+    chartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: etiquetas,
+            datasets: [{ label: "Garrafones Vendidos", data: valores, backgroundColor: "#00acc1", borderRadius: 5 }]
+        },
+        options: { responsive: true }
+    });
+}
+
+window.onload = () => cargarDatos(false);
+</script>
+</body>
+</html>
