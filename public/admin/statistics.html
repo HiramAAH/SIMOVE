@@ -96,15 +96,17 @@ async function cargarDatos(mostrarTodos = false) {
         cortesGlobales = await response.json();
         
         cortesGlobales = cortesGlobales.map(c => {
-            const f = new Date(c.fecha);
-            const yyyy = f.getFullYear();
-            const mm = String(f.getMonth() + 1).padStart(2, '0');
-            const dd = String(f.getDate()).padStart(2, '0');
+            // c.fecha viene del servidor en formato "YYYY-MM-DD" (ejemplo: "2026-05-02")
+            // Lo separamos usando split para no crear un objeto Date
+            const partes = c.fecha.split('-'); 
+            const yyyy = partes[0];
+            const mm = partes[1];
+            const dd = partes[2];
             
             return {
                 ...c,
-                fechaFiltro: `${yyyy}-${mm}-${dd}`,
-                fechaVista: f.toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                fechaFiltro: `${yyyy}-${mm}-${dd}`, // "2026-05-02"
+                fechaVista: `${dd}/${mm}/${yyyy}`    // "02/05/2026" (Formato visual)
             };
         });
 
