@@ -8,6 +8,12 @@
   <script>
     const userAuth = JSON.parse(localStorage.getItem('usuario'));
     if (!userAuth || userAuth.rol !== 'admin') window.location.replace('index.html');
+    
+    // Encabezado necesario para autorizar peticiones al servidor
+    const headers = { 
+        'Content-Type': 'application/json',
+        'x-user-rol': userAuth ? userAuth.rol : '' 
+    };
   </script>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -32,10 +38,17 @@
     
     .empty-state { text-align: center; color: #888; font-style: italic; margin-top: 40px; }
 
+    /* MODIFICACIÓN CSS PARA MÓVIL: Sidebar abajo */
     @media (max-width: 768px) {
       .main-wrapper { flex-direction: column; }
-      #map-container { width: 100%; height: 50%; }
-      #sidebar { width: 100%; height: 50%; border-top-left-radius: 20px; border-top-right-radius: 20px; margin-top: -15px; box-shadow: 0 -5px 20px rgba(0,0,0,0.15); padding: 15px; }
+      #map-container { width: 100%; height: 60%; } /* Mapa ocupa 60% */
+      #sidebar { 
+        width: 100%; 
+        height: 40%; /* Sidebar ocupa 40% abajo */
+        position: static; 
+        box-shadow: 0 -5px 15px rgba(0,0,0,0.1); 
+        padding: 15px; 
+      }
     }
   </style>
 </head>
@@ -63,52 +76,34 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // LÓGICA INTACTA
-    const map = L.map('map').setView([22.1565, -100.9754], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-    let routeLayerGroup = L.layerGroup().addTo(map);
+    const map = L.map('map').setView([22.15, -100.98], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+    const routeLayerGroup = L.layerGroup().addTo(map);
 
-    async function cargarHistorial() {
-      const listDiv = document.getElementById('routes-list');
-      listDiv.innerHTML = '<div class="empty-state"><div class="spinner-border text-info spinner-border-sm mb-2"></div><br>Buscando viajes...</div>';
-
-      try {
-        const res = await fetch('https://simove.onrender.com/api/historial/rutas');
-        if (!res.ok) throw new Error("Fallo de conexión. ¿Las APIs están en Render?");
-        
-        const rutas = await res.json();
-        listDiv.innerHTML = '';
-
-        if(rutas.length === 0) {
-            listDiv.innerHTML = '<div class="empty-state"><i class="bi bi-journal-x fs-1 text-muted"></i><br>No hay rutas registradas.</div>';
-            return;
-        }
-
-        rutas.forEach(r => {
-            const fechaServidor = new Date(r.fecha_inicio); 
-            // Ajuste de Zona Horaria (+6 horas) mantenido exactamente igual
-            const fechaAjustada = new Date(fechaServidor.getTime() + (6 * 60 * 60 * 1000));
-            const fechaStr = fechaAjustada.toLocaleDateString('es-MX', { 
-                year: 'numeric', month: '2-digit', day: '2-digit', 
-                hour: '2-digit', minute: '2-digit', hour12: true 
+    async function cargarRutas() {
+        const contenedor = document.getElementById('routes-list');
+        try {
+            // Se apunta a la ruta relativa y se incluyen los headers
+            const res = await fetch('/api/historial/rutas', { method: 'GET', headers });
+            
+            if (!res.ok) throw new Error("Error al obtener rutas.");
+            const rutas = await res.json();
+            
+            contenedor.innerHTML = '';
+            if (rutas.length === 0) {
+                contenedor.innerHTML = '<div class="empty-state">No hay rutas registradas.</div>';
+                return;
+            }
+            
+            rutas.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'route-card';
+                div.innerHTML = `<strong>Ruta #${r.id_ruta}</strong><br><small>${r.fecha_inicio}</small>`;
+                div.onclick = () => dibujarRuta(r.id_ruta, div);
+                contenedor.appendChild(div);
             });
-
-            // Nuevo diseño inyectado para la tarjeta
-            const div = document.createElement('div');
-            div.className = 'route-card';
-            div.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <h6 class="m-0 fw-bold text-dark"><i class="bi bi-person-fill text-info"></i> ${r.nombre_usuario}</h6>
-                    <span class="badge bg-success rounded-pill">${r.ventas} Vendidos</span>
-                </div>
-                <div class="small text-muted mt-2"><i class="bi bi-calendar-event"></i> ${fechaStr}</div>
-            `;
-            div.onclick = () => dibujarRuta(r.id_ruta, div);
-            listDiv.appendChild(div);
-        });
         } catch (err) {
-            console.error("Error cargando rutas", err);
-            listDiv.innerHTML = `<div class="empty-state text-danger fw-bold"><i class="bi bi-exclamation-triangle"></i><br>${err.message}</div>`;
+            contenedor.innerHTML = `<div class="alert alert-danger p-2 small">Error: ${err.message}</div>`;
         }
     }
 
@@ -117,7 +112,8 @@
       divElement.classList.add('active');
 
       try {
-        const res = await fetch(`https://simove.onrender.com/api/historial/coordenadas/${id_ruta}`);
+        const res = await fetch(`/api/historial/coordenadas/${id_ruta}`, { method: 'GET', headers });
+
         if (!res.ok) throw new Error("Error al consultar coordenadas.");
         const coordenadas = await res.json();
 
@@ -131,17 +127,18 @@
         const puntosLatLng = coordenadas.map(c => [c.lat, c.lng]);
         const polyline = L.polyline(puntosLatLng, { color: '#00acc1', weight: 5 }).addTo(routeLayerGroup);
 
-        L.marker(puntosLatLng[0]).addTo(routeLayerGroup).bindPopup("<b class='text-primary'>Inicio de Ruta</b>").openPopup();
+        L.marker(puntosLatLng[0]).addTo(routeLayerGroup).bindPopup("Inicio").openPopup();
         if(puntosLatLng.length > 1) {
-            L.circleMarker(puntosLatLng[puntosLatLng.length - 1], { color: '#dc3545', radius: 6, fillOpacity: 1 }).addTo(routeLayerGroup).bindPopup("<b class='text-danger'>Fin de Ruta</b>");
+            L.circleMarker(puntosLatLng[puntosLatLng.length - 1], { color: '#dc3545', radius: 6 }).addTo(routeLayerGroup).bindPopup("Fin");
         }
-        map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+        
+        map.fitBounds(polyline.getBounds());
       } catch (err) {
-        alert("Error cargando el trazado: " + err.message);
+        alert(err.message);
       }
     }
 
-    window.onload = cargarHistorial;
-  </script>
+    cargarRutas();
+</script>
 </body>
 </html>

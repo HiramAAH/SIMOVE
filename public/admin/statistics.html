@@ -88,16 +88,34 @@ let chartInstance = null;
 async function cargarDatos(mostrarTodos = false) {
     const mensaje = document.getElementById("mensaje-estado");
     const contenido = document.getElementById("contenido-estadisticas");
-    
+    const userAuth = JSON.parse(localStorage.getItem('usuario'));
+
+    if (!userAuth) {
+        window.location.replace('index.html');
+        return;
+    }
+
     try {
-        const response = await fetch('https://simove.onrender.com/api/estadisticas');
-        if (!response.ok) throw new Error("Fallo en la comunicación con el servidor.");
+        console.log("Iniciando petición al servidor...");
+
+        // CORRECCIÓN: Ruta relativa + Headers obligatorios + No cache
+        const response = await fetch('/api/estadisticas', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-rol': userAuth.rol 
+            },
+            cache: 'no-cache' 
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error ${response.status}: El servidor rechazó la conexión.`);
+        }
 
         cortesGlobales = await response.json();
-        
+        console.log("Datos recibidos:", cortesGlobales);
+
         cortesGlobales = cortesGlobales.map(c => {
-            // c.fecha viene del servidor en formato "YYYY-MM-DD" (ejemplo: "2026-05-02")
-            // Lo separamos usando split para no crear un objeto Date
             const partes = c.fecha.split('-'); 
             const yyyy = partes[0];
             const mm = partes[1];
@@ -105,8 +123,8 @@ async function cargarDatos(mostrarTodos = false) {
             
             return {
                 ...c,
-                fechaFiltro: `${yyyy}-${mm}-${dd}`, // "2026-05-02"
-                fechaVista: `${dd}/${mm}/${yyyy}`    // "02/05/2026" (Formato visual)
+                fechaFiltro: `${yyyy}-${mm}-${dd}`,
+                fechaVista: `${dd}/${mm}/${yyyy}`
             };
         });
 
@@ -124,8 +142,10 @@ async function cargarDatos(mostrarTodos = false) {
             filtrarPorDia();
         }
     } catch (error) {
-        console.error("Error:", error);
-        mensaje.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-danger fs-1 mb-3"></i><h5 class="text-danger">${error.message}</h5>`;
+        console.error("Error capturado:", error);
+        mensaje.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-danger fs-1 mb-3"></i>
+                             <h5 class="text-danger">${error.message}</h5>
+                             <button class="btn btn-primary mt-3" onclick="location.reload()">Reintentar</button>`;
     }
 }
 

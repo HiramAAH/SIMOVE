@@ -16,87 +16,69 @@
 <style>
   body { background-color: #f4f8fb; font-family: system-ui, -apple-system, sans-serif; padding-bottom: 20px;}
   .navbar-custom { background: linear-gradient(90deg, #0277bd 0%, #00acc1 100%); color: white; padding: 15px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px;}
-  
   .card-custom { border-radius: 15px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-  .table-custom th { background-color: #f8f9fa; color: #0288d1; font-weight: 700; border-bottom: 2px solid #e0e0e0; }
-  .table-custom td { vertical-align: middle; }
-  
-  .modal-content { border-radius: 20px; border: none; }
-  .modal-header { border-top-left-radius: 20px; border-top-right-radius: 20px; background: linear-gradient(90deg, #0277bd, #00acc1); }
 </style>
 </head>
 <body>
 
-<div class="navbar-custom d-flex justify-content-between align-items-center">
-  <h5 class="m-0 fw-bold"><i class="bi bi-people"></i> Gestión de Usuarios</h5>
-  <button class="btn btn-sm btn-light rounded-pill fw-bold text-primary shadow-sm" onclick="window.location.href='dashboard.html'">
-    <i class="bi bi-arrow-left"></i> Panel
-  </button>
-</div>
+<nav class="navbar navbar-custom">
+  <div class="container">
+    <a class="navbar-brand text-white fw-bold" href="#"><i class="bi bi-people-fill"></i> Gestión de Usuarios</a>
+    <button class="btn btn-outline-light btn-sm" onclick="window.location.href='dashboard.html'">Volver</button>
+  </div>
+</nav>
 
 <div class="container">
-    <div class="d-flex justify-content-end mb-3">
-        <button class="btn btn-info text-white fw-bold rounded-pill shadow-sm" onclick="abrirModalNuevo()">
-            <i class="bi bi-person-plus-fill"></i> Agregar Usuario
-        </button>
+  <div class="card card-custom p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h4 class="m-0">Lista de Usuarios</h4>
+      <button class="btn btn-primary" onclick="abrirModal()"><i class="bi bi-plus-lg"></i> Nuevo</button>
     </div>
-
-    <div class="card card-custom overflow-hidden">
-        <div class="card-body p-0 table-responsive">
-            <table class="table table-hover table-custom text-center mb-0">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Rol</th>
-                        <th>Contraseña</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="userTable">
-                    <tr><td colspan="5" class="text-muted py-4"><div class="spinner-border text-info mb-2" role="status"></div><br>Cargando usuarios...</td></tr>
-                </tbody>
-            </table>
-        </div>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Rol</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaUsuarios"></tbody>
+      </table>
     </div>
+  </div>
 </div>
 
-<div class="modal fade" id="userModal" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content shadow">
-      <div class="modal-header text-white">
-        <h5 class="modal-title fw-bold" id="modalTitle">Nuevo Usuario</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="userModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">Nuevo Usuario</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body p-4">
+      <div class="modal-body">
         <input type="hidden" id="userId">
-        
         <div class="mb-3">
-            <label class="form-label text-muted fw-bold small">Nombre de Usuario</label>
-            <input type="text" id="nombre" class="form-control" placeholder="Ej: Juan Perez">
+          <label>Nombre de usuario</label>
+          <input type="text" id="nombre" class="form-control">
         </div>
-        
         <div class="mb-3">
-            <label class="form-label text-muted fw-bold small">Rol del Sistema</label>
-            <select id="rol" class="form-select">
-                <option value="repartidor">Repartidor</option>
-                <option value="ventanilla">Ventanilla</option>
-                <option value="admin">Administrador</option>
-            </select>
+          <label>Rol</label>
+          <select id="rol" class="form-select">
+            <option value="admin">Administrador</option>
+            <option value="repartidor">Repartidor</option>
+            <option value="ventanilla">Ventanilla</option>
+          </select>
         </div>
-        
         <div class="mb-3">
-            <label class="form-label text-muted fw-bold small">Contraseña</label>
-            <input type="text" id="password" class="form-control" placeholder="Escribe para cambiar contraseña">
-            <small id="passwordHelp" class="text-secondary mt-1 d-block" style="font-size: 0.8rem;">
-                Si lo dejas en blanco, la contraseña actual se mantendrá.
-            </small>
+          <label>Contraseña</label>
+          <input type="password" id="password" class="form-control">
+          <small class="text-muted" id="passwordHelp" style="display:none;">Déjalo en blanco para mantener la actual.</small>
         </div>
       </div>
-      
-      <div class="modal-footer border-0 pb-4 pe-4">
-        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-info text-white fw-bold rounded-pill px-4" onclick="guardarUsuario()">Guardar</button>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
       </div>
     </div>
   </div>
@@ -104,100 +86,91 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const myModal = new bootstrap.Modal(document.getElementById('userModal'));
-// Uso de URL relativa para evitar problemas CORS entre Local y Render
-const urlBase = '/api/usuarios';
+  const urlBase = '/api/usuarios';
+  const myModal = new bootstrap.Modal(document.getElementById('userModal'));
 
-async function cargarUsuarios() {
-    try {
-        const response = await fetch(urlBase);
-        const usuarios = await response.json();
-        const tbody = document.getElementById("userTable");
-        tbody.innerHTML = "";
-        
-        usuarios.forEach(user => {
-            // Asignación de colores por rol
-            let badgeColor = 'bg-secondary';
-            if(user.rol === 'admin') badgeColor = 'bg-danger';
-            if(user.rol === 'repartidor') badgeColor = 'bg-info';
-            if(user.rol === 'ventanilla') badgeColor = 'bg-success';
+  async function cargarUsuarios() {
+    const res = await fetch(urlBase, {
+      headers: { 
+        'x-user-rol': userAuth.rol 
+      }
+    });
+    const usuarios = await res.json();
+    const tbody = document.getElementById("tablaUsuarios");
+    tbody.innerHTML = "";
+    usuarios.forEach(u => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${u.nombre_usuario}</td>
+          <td><span class="badge bg-secondary">${u.rol}</span></td>
+          <td>
+            <button class="btn btn-sm btn-warning" onclick="editarUsuario(${u.id_usuario}, '${u.nombre_usuario}', '${u.rol}')"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-danger" onclick="eliminarUsuario(${u.id_usuario})"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>
+      `;
+    });
+  }
 
-            tbody.innerHTML += `
-                <tr>
-                    <td class="text-muted fw-semibold">#${user.id_usuario}</td>
-                    <td><strong class="text-dark">${user.nombre_usuario}</strong></td>
-                    <td><span class="badge ${badgeColor} rounded-pill">${user.rol.toUpperCase()}</span></td>
-                    <td><span class="text-muted fw-bold fs-5" title="Encriptada">••••••••</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary rounded-circle" onclick="abrirModalEditar(${user.id_usuario}, '${user.nombre_usuario}', '${user.rol}')"><i class="bi bi-pencil-fill"></i></button>
-                        <button class="btn btn-sm btn-outline-danger rounded-circle ms-1" onclick="eliminarUsuario(${user.id_usuario})"><i class="bi bi-trash-fill"></i></button>
-                    </td>
-                </tr>
-            `;
-        });
-    } catch (error) {
-        console.error("Error cargando usuarios", error);
-    }
-}
-
-function abrirModalNuevo() {
-    document.getElementById("modalTitle").textContent = "Nuevo Usuario";
+  function abrirModal() {
+    document.getElementById("modalTitle").innerText = "Nuevo Usuario";
     document.getElementById("userId").value = "";
     document.getElementById("nombre").value = "";
     document.getElementById("rol").value = "repartidor";
     document.getElementById("password").value = "";
-    document.getElementById("passwordHelp").style.display = "none"; // Ocultar mensaje en usuario nuevo
+    document.getElementById("passwordHelp").style.display = "none";
     myModal.show();
-}
+  }
 
-// Ya no pasamos la contraseña antigua como parámetro
-function abrirModalEditar(id, nombre, rol) {
-    document.getElementById("modalTitle").textContent = "Editar Usuario";
+  function editarUsuario(id, nombre, rol) {
+    document.getElementById("modalTitle").innerText = "Editar Usuario";
     document.getElementById("userId").value = id;
     document.getElementById("nombre").value = nombre;
     document.getElementById("rol").value = rol;
-    document.getElementById("password").value = ""; // Siempre en blanco por seguridad
-    document.getElementById("passwordHelp").style.display = "block"; // Mostrar mensaje
+    document.getElementById("password").value = "";
+    document.getElementById("passwordHelp").style.display = "block";
     myModal.show();
-}
+  }
 
-async function guardarUsuario() {
+  async function guardarUsuario() {
     const id = document.getElementById("userId").value;
     const password = document.getElementById("password").value;
-    
     const data = {
         nombre_usuario: document.getElementById("nombre").value,
         rol: document.getElementById("rol").value,
         password: password
     };
-
-    // Validar que un usuario nuevo forzosamente tenga contraseña
     if(!id && password.trim() === '') {
         alert("Un usuario nuevo necesita una contraseña.");
         return;
     }
-
     const method = id ? 'PUT' : 'POST';
     const url = id ? `${urlBase}/${id}` : urlBase;
-
     await fetch(url, {
         method: method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'x-user-rol': userAuth.rol 
+        },
         body: JSON.stringify(data)
     });
-    
     myModal.hide();
     cargarUsuarios();
-}
+  }
 
-async function eliminarUsuario(id) {
+  async function eliminarUsuario(id) {
     if(confirm("¿Seguro que deseas eliminar a este usuario permanentemente?")) {
-        await fetch(`${urlBase}/${id}`, { method: 'DELETE' });
+        await fetch(`${urlBase}/${id}`, {
+            method: 'DELETE',
+            headers: { 
+                'x-user-rol': userAuth.rol 
+            }
+        });
         cargarUsuarios();
     }
-}
+  }
 
-window.onload = cargarUsuarios;
+  cargarUsuarios();
 </script>
 </body>
 </html>
