@@ -75,7 +75,6 @@
   </div>
 
   <script>
-    // Tu lógica original de login intacta
     document.addEventListener('DOMContentLoaded', () => {
       if (window.Capacitor && window.Capacitor.Plugins.App) {
         window.Capacitor.Plugins.App.addListener('backButton', ({ canGoBack }) => {
@@ -92,7 +91,7 @@
       errorDiv.textContent = '';
 
       try {
-        // RUTA RELATIVA: Funciona en local y en la nube
+        
         const respuesta = await fetch('https://simove.onrender.com/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -103,7 +102,7 @@
         if (data.success) {
           localStorage.setItem('usuario', JSON.stringify(data.user));
           
-          // OJO: Estas rutas asumen que sigues teniendo carpetas admin/, repartidor/, ventanilla/
+          
           if (data.user.rol === 'admin') window.location.href = 'admin/dashboard.html';
           else if (data.user.rol === 'repartidor') window.location.href = 'repartidor/dashboard.html'; 
           else if (data.user.rol === 'ventanilla') window.location.href = 'ventanilla/dashboard.html'; 

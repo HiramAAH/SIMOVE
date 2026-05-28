@@ -80,7 +80,6 @@
 </div>
 
 <script>
-// AQUÍ VA TU LÓGICA DE JAVASCRIPT INTACTA
 const PRECIO = 15;
 let cortesGlobales = [];
 let chartInstance = null;
@@ -98,7 +97,6 @@ async function cargarDatos(mostrarTodos = false) {
     try {
         console.log("Iniciando petición al servidor...");
 
-        // CORRECCIÓN: Ruta relativa + Headers obligatorios + No cache
         const response = await fetch('/api/estadisticas', {
             method: 'GET',
             headers: {

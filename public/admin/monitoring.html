@@ -73,7 +73,6 @@
   <script src="https://simove.onrender.com/socket.io/socket.io.js"></script>
 
   <script>
-    // LÓGICA INTACTA
     const socket = io('https://simove.onrender.com', {
       query: { id_usuario: userAuth.id_usuario, nombre_usuario: userAuth.nombre_usuario, rol: userAuth.rol }
     });
@@ -111,7 +110,7 @@
       repartidores.forEach(rep => {
         const isGPSActive = rep.lat ? true : false;
         
-        // 1. DOM DIFFING: Buscamos si la tarjeta ya existe usando un ID único
+        // 1. DOM DIFFING: si la tarjeta ya existe usando un ID único
         let card = document.getElementById(`card-${rep.usuario}`);
 
         if (!card) {
@@ -179,14 +178,12 @@
       });
 
       // 3. LIMPIEZA DE DESCONECTADOS
-      // Quitamos del menú lateral a los que cerraron turno
       const tarjetasExistentes = driversListDiv.querySelectorAll('.driver-card');
       tarjetasExistentes.forEach(tarjeta => {
          const idUsuario = tarjeta.id.replace('card-', '');
          if (!estadoActualRutas[idUsuario]) tarjeta.remove();
       });
 
-      // Quitamos del mapa a los que cerraron turno
       for (let nombreEnMapa in markers) {
         if (!estadoActualRutas[nombreEnMapa]) {
           map.removeLayer(markers[nombreEnMapa]);
@@ -195,7 +192,6 @@
       }
       
       // 4. EVITAR QUE EL MAPA SALTE
-      // Centramos la cámara automáticamente solo la primera vez que detecta un GPS
       if (!primerCentrado && coordenadasActivas.length > 0) {
         if (coordenadasActivas.length === 1) {
           map.setView(coordenadasActivas[0], 15);

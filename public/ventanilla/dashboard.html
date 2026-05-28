@@ -7,7 +7,7 @@
 
   <script>
     const userAuth = JSON.parse(localStorage.getItem('usuario'));
-    // Corrección de ruta: apunta directo a index.html en la misma carpeta
+    
     if (!userAuth || userAuth.rol !== 'ventanilla') window.location.replace('index.html');
   </script>
 

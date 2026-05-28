@@ -17,7 +17,6 @@ const io = new Server(server, {
   pingInterval: 35000, // El servidor pregunta si el celular sigue ahí cada 35 segundos
   pingTimeout: 60000   // Le da al celular 1 minuto entero para responder si entra a una zona sin señal
 });
-// 1. CREAMOS LA BASE DE DATOS PRIMERO
 const db = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -38,7 +37,6 @@ db.getConnection((err, connection) => {
   }
 });
 
-// 2. AHORA SÍ PASAMOS LA BD A LAS RUTAS DE AUTH
 const authRoutes = require('./routes/auth')(db);
 
 app.use(cors()); 
@@ -176,12 +174,10 @@ app.get('/api/mis-cortes', (req, res) => {
 // APIS PARA EL PANEL DE ADMINISTRADOR
 // ==========================================
 
-// Middleware: Cadenero que verifica si es Administrador
 const verificarAdmin = (req, res, next) => {
   const rolSession = req.session?.user?.rol;
   const rolHeader = req.headers['x-user-rol'];
   
-  // LOGS DE DEBUGGING (Mira tu terminal de VS Code cuando salga el error)
   console.log("--- DEBUG AUTH ---");
   console.log("Rol en Sesión:", rolSession);
   console.log("Rol en Header:", rolHeader);
@@ -198,7 +194,6 @@ const verificarAdmin = (req, res, next) => {
 
 // Se inyecta 'verificarAdmin' en todas las rutas de este bloque
 app.get('/api/usuarios', verificarAdmin, (req, res) => {
-  // Nota: Eliminamos 'password' de la consulta GET para no enviar datos sensibles por internet
   db.query('SELECT id_usuario, nombre_usuario, rol FROM usuarios', (err, results) => {
     if(err) return res.status(500).json({error: err.message});
     res.json(results);
