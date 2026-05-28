@@ -155,7 +155,7 @@
             backgroundTitle: "Ruta Activa",
             requestPermissions: true,
             stale: false,
-            distanceFilter: 15 // AUMENTADO: Solo detecta si se movió 15 metros
+            distanceFilter: 3 // AUMENTADO: Solo detecta si se movió 3 metros
           },
           function callback(location, error) {
             if (error) return logDebug(`Error GPS: ${error.message}`, "red");

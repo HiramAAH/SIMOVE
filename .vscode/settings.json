@@ -1,0 +1,13 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/c:\\Users\\aleja\\OneDrive - Universidad Politécnica de San Luis Potosí\\Documentos\\SIMOVE\\public\\admin\\Untitled-1.aux": true,
+        "**/c:\\Users\\aleja\\OneDrive - Universidad Politécnica de San Luis Potosí\\Documentos\\SIMOVE\\public\\admin\\Untitled-1.log": true,
+        "**/c:\\Users\\aleja\\OneDrive - Universidad Politécnica de San Luis Potosí\\Documentos\\SIMOVE\\public\\admin\\Untitled-1.gz": true,
+        "**/c:\\Users\\aleja\\OneDrive - Universidad Politécnica de San Luis Potosí\\Documentos\\SIMOVE\\public\\admin\\Untitled-1.out": true
+    }
+}

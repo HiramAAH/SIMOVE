@@ -178,8 +178,18 @@ app.get('/api/mis-cortes', (req, res) => {
 
 // Middleware: Cadenero que verifica si es Administrador
 const verificarAdmin = (req, res, next) => {
-  const user = req.session?.user;
-  if (user && user.rol === 'admin') {
+  const rolSession = req.session?.user?.rol;
+  const rolHeader = req.headers['x-user-rol'];
+  
+  // LOGS DE DEBUGGING (Mira tu terminal de VS Code cuando salga el error)
+  console.log("--- DEBUG AUTH ---");
+  console.log("Rol en Sesión:", rolSession);
+  console.log("Rol en Header:", rolHeader);
+  console.log("------------------");
+
+  const rol = rolSession || rolHeader;
+
+  if (rol === 'admin') {
     next(); 
   } else {
     res.status(403).json({ error: "Acceso denegado. Privilegios insuficientes." });
