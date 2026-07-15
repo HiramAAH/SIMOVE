@@ -28,8 +28,8 @@ Para el monitoreo de repartidores y despachadores:
 
 forma de aceder al panel web:
 https://simove.onrender.com/
-Usuario admin: Profe
 
+Usuario admin: Profe
 pass:123456
 
 Usuario repartidor: Hiram
